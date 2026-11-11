@@ -189,7 +189,7 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
   const cx = ROOM_W / 2;
   switch (room.type) {
     case 'inicio':
-      sc.floorText(cx, 25, 'WASD andar · Flechas lanzar');
+      sc.floorText(cx, 44, 'WASD andar · Flechas lanzar');
       sc.floorText(cx, 104, 'E petardo · Espacio objeto');
       sc.floorText(cx, 114, 'Q golosina · Esc pausa');
       break;
@@ -245,7 +245,7 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       const m = sc.add.image(cx, tileY(1), 'cartel_maestro').setDepth(DEPTH.world + tileY(1));
       sc.roomObjs.push(m);
       sc.tweens.add({ targets: m, y: m.y - 2, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
-      sc.floorText(cx, tileY(5) + 2, 'Firma aquí. Lo demás, letra pequeña.', 0xd4323f, 0.8);
+      sc.floorText(cx, tileY(5) + 2, 'Firma aquí. Letra pequeña.', 0xd4323f, 0.8);
       if (first) {
         for (const x of [tileX(4), tileX(8)]) {
           const id = sc.drawItem('contrato');
@@ -308,24 +308,23 @@ function buildDiana(sc: GameScene, room: RoomState): void {
     sc.time.delayedCall(380, () => {
       const knife = sc.add.image(npc.x, npc.y - 6, 'cuchillo_enemigo').setDepth(DEPTH.shot).setRotation(-Math.PI / 2);
       sc.snd('cuchillo');
-      sc.tweens.add({
-        targets: knife, x: p.x, y: p.y - 6, duration: 160,
-        onComplete: () => {
-          knife.destroy();
-          npc.setFrame(0);
-          busy = false;
-          cd = 1.3;
-          const st = sc.run.player;
-          if (st.hp + st.shield <= 1) {
-            sc.banner('¡Por los pelos!', 'Hoy no es tu día de suerte. O sí.');
-            return;
-          }
-          sc.player.invuln = 0;
-          sc.hurtPlayer(1, p.x, p.y - 10);
-          const uses = ((room.data.uses as number) ?? 0) + 1;
-          room.data.uses = uses;
-          dianaPrize(sc, room, uses);
-        },
+      // El vuelo del cuchillo es solo visual; el resultado va por el reloj del juego.
+      sc.tweens.add({ targets: knife, x: p.x, y: p.y - 6, duration: 150 });
+      sc.time.delayedCall(160, () => {
+        knife.destroy();
+        npc.setFrame(0);
+        busy = false;
+        cd = 1.3;
+        const st = sc.run.player;
+        if (st.hp + st.shield <= 1) {
+          sc.banner('¡Por los pelos!', 'Hoy no es tu día de suerte. O sí.');
+          return;
+        }
+        sc.player.invuln = 0;
+        sc.hurtPlayer(1, p.x, p.y - 10);
+        const uses = ((room.data.uses as number) ?? 0) + 1;
+        room.data.uses = uses;
+        dianaPrize(sc, room, uses);
       });
     });
   });

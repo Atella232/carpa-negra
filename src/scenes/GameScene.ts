@@ -629,6 +629,7 @@ export class GameScene extends Phaser.Scene {
     this.snd('objeto');
     // Pompón levanta el objeto sobre la cabeza.
     const icon = this.add.image(this.player.x, this.player.y - 28, `obj_${id}`).setDepth(DEPTH.overlay);
+    this.roomObjs.push(icon);
     this.tweens.add({ targets: icon, y: icon.y - 6, alpha: 0, delay: 700, duration: 400, onComplete: () => icon.destroy() });
     return previous;
   }

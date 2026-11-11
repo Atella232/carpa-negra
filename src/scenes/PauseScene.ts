@@ -17,7 +17,7 @@ export class PauseScene extends Phaser.Scene {
     const gs = this.scene.get('Juego') as GameScene;
     const run = gs.run;
     const st = gs.stats;
-    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0b0710, 0.88).setOrigin(0);
+    this.add.rectangle(0, 0, GAME_W, GAME_H, 0x0b0710, 0.95).setOrigin(0);
     txt(this, GAME_W / 2, 6, 'Pausa', 0xd4323f, 'center').setScale(2);
     txt(this, GAME_W / 2, 24, `Acto ${run.act}: ${run.actName}`, 0x8a8394, 'center');
 
@@ -25,23 +25,23 @@ export class PauseScene extends Phaser.Scene {
       ['Daño', st.damage.toFixed(2)],
       ['Cadencia', st.shotsPerSecond.toFixed(2)],
       ['Alcance', (st.range / 16).toFixed(1)],
-      ['Vel. disparo', (st.shotSpeed / 100).toFixed(2)],
+      ['Vel. tiro', (st.shotSpeed / 100).toFixed(2)],
       ['Velocidad', (st.speed / 80).toFixed(2)],
       ['Suerte', st.luck.toFixed(1)],
     ];
     lines.forEach(([k, v], i) => {
       txt(this, 12, 40 + i * 10, k, 0xefe6d8);
-      txt(this, 104, 40 + i * 10, v, 0xf2c14e, 'right');
+      txt(this, 112, 40 + i * 10, v, 0xf2c14e, 'right');
     });
 
     const owned = [...run.player.passives, ...(run.player.active ? [run.player.active] : [])];
-    txt(this, 120, 40, owned.length ? 'Objetos' : 'Sin objetos aún', 0x8a8394);
+    txt(this, 124, 40, owned.length ? 'Objetos' : 'Sin objetos aún', 0x8a8394);
     owned.forEach((id, i) => {
-      const img = this.add.image(128 + (i % 6) * 18, 58 + Math.floor(i / 6) * 18, `obj_${id}`);
+      const img = this.add.image(132 + (i % 6) * 18, 58 + Math.floor(i / 6) * 18, `obj_${id}`);
       img.setInteractive();
       img.on('pointerover', () => hint.setText(item(id).name.toUpperCase()));
     });
-    const hint = txt(this, 120, 112, '', 0xc9b3ef);
+    const hint = txt(this, 124, 112, '', 0xc9b3ef);
     if (owned.length) hint.setText(item(owned[owned.length - 1]).name.toUpperCase());
 
     const vol = txt(this, GAME_W / 2, 126, '', 0x8a8394, 'center');

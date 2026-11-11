@@ -15,7 +15,7 @@ export class Forzudo extends Enemy {
 
   constructor(scene: GameScene, x: number, y: number) {
     super(scene, x, y, 'forzudo', {
-      hp: 300, speed: 30, body: { w: 26, h: 20, dy: 8 }, name: 'El Forzudo',
+      hp: 260, speed: 30, body: { w: 26, h: 20, dy: 8 }, name: 'El Forzudo',
     });
     this.isBoss = true;
     this.wake = 1.4;
@@ -175,7 +175,7 @@ export class Siames extends Enemy {
 
   constructor(scene: GameScene, x: number, y: number, role: 'tiro' | 'tiron') {
     super(scene, x, y, role === 'tiro' ? 'siames_a' : 'siames_b', {
-      hp: 140, speed: role === 'tiro' ? 48 : 40, body: { w: 14, h: 14, dy: 6 },
+      hp: 120, speed: role === 'tiro' ? 48 : 40, body: { w: 14, h: 14, dy: 6 },
       name: role === 'tiro' ? 'Tiro' : 'Tirón',
     });
     this.role = role;
