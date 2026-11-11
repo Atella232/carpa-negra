@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
 import { GAME_H, GAME_W } from '../config';
-import { txt } from '../ui/text';
+import { txt, setTxt } from '../ui/text';
 import { item } from '../data/items';
 import { formatSeed } from '../core/rng';
 import { getVolumes, setVolumes } from '../audio/sfx';
@@ -39,15 +39,15 @@ export class PauseScene extends Phaser.Scene {
     owned.forEach((id, i) => {
       const img = this.add.image(132 + (i % 6) * 18, 58 + Math.floor(i / 6) * 18, `obj_${id}`);
       img.setInteractive();
-      img.on('pointerover', () => hint.setText(item(id).name.toUpperCase()));
+      img.on('pointerover', () => setTxt(hint, item(id).name));
     });
     const hint = txt(this, 124, 112, '', 0xc9b3ef);
-    if (owned.length) hint.setText(item(owned[owned.length - 1]).name.toUpperCase());
+    if (owned.length) setTxt(hint, item(owned[owned.length - 1]).name);
 
     const vol = txt(this, GAME_W / 2, 126, '', 0x8a8394, 'center');
     const showVol = () => {
       const v = getVolumes();
-      vol.setText(`VOLUMEN ${Math.round(v.sfx * 10)}  MÚSICA ${Math.round(v.music * 10)}${v.muted ? '  (MUDO)' : ''}`.replace('Ú', 'U'));
+      setTxt(vol, `Volumen ${Math.round(v.sfx * 10)}  Música ${Math.round(v.music * 10)}${v.muted ? '  (mudo)' : ''}`);
     };
     showVol();
     txt(this, GAME_W / 2, 140, 'Esc volver · R reiniciar · M menú', 0xefe6d8, 'center');
