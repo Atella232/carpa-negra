@@ -4,7 +4,7 @@ import { generateFloor, roomDoors, Dir, FloorLayout, RoomType, DIR_VEC } from '.
 import { ItemPools } from './itempool';
 import { StatMods } from './stats';
 import { ITEMS } from '../data/items';
-import { ACTO1_ROOMS } from '../data/rooms/acto1';
+import { actDef } from '../data/acts';
 import { BossKind } from '../data/enemies';
 import { GOLOSINA_COLORS, GOLOSINA_EFFECTS, GolosinaColor, GolosinaEffect } from '../data/golosinas';
 
@@ -120,11 +120,13 @@ function newRoom(x: number, y: number, type: RoomType, dist: number, doors: Dir[
   };
 }
 
-export function createRun(seedInput: string, now = 0): RunState {
-  const seed = normalizeSeed(seedInput) || 'CARPA000';
-  const streams = new RngStreams(seed);
-  const mapRng = streams.get('mapa');
-  const layout = generateFloor(mapRng);
+/** Genera el piso de un acto (salas, contrato y jefe) con su propio flujo de azar. */
+export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layout' | 'rooms' | 'contract' | 'boss' | 'cur'> {
+  const def = actDef(act);
+  // El Acto I usa el flujo "mapa" sin sal para que las semillas antiguas no cambien.
+  const mapRng = act === 1 ? streams.get('mapa') : streams.get('mapa', String(act));
+  const layout = generateFloor(mapRng, { minNormal: def.minNormal, maxNormal: def.maxNormal });
+  const templates = def.templates;
 
   const rooms = new Map<string, RoomState>();
   for (const r of layout.rooms) {
@@ -133,8 +135,8 @@ export function createRun(seedInput: string, now = 0): RunState {
       // Más dificultad cuanto más lejos del inicio.
       const allowed = r.dist <= 1 ? [0, 1, 1, 2] : r.dist <= 3 ? [1, 2, 2, 3] : [2, 3, 3];
       const want = mapRng.pick(allowed);
-      const options = ACTO1_ROOMS.filter((t) => t.diff === want);
-      const tpl = mapRng.pick(options.length ? options : ACTO1_ROOMS);
+      const options = templates.filter((t) => t.diff === want);
+      const tpl = mapRng.pick(options.length ? options : templates);
       room.templateId = tpl.id;
       room.flipX = mapRng.chance(0.5);
       room.flipY = mapRng.chance(0.5);
@@ -142,10 +144,21 @@ export function createRun(seedInput: string, now = 0): RunState {
     }
     rooms.set(roomKey(r.x, r.y), room);
   }
-  const start = rooms.get(roomKey(layout.start.x, layout.start.y))!;
-  start.visited = true;
+  rooms.get(roomKey(layout.start.x, layout.start.y))!.visited = true;
+  const boss = def.bosses.length === 2 ? (mapRng.chance(0.5) ? def.bosses[0] : def.bosses[1]) : mapRng.pick(def.bosses);
+  return {
+    layout,
+    rooms,
+    contract: newRoom(-1, -1, 'contrato', 99, ['S']),
+    boss,
+    cur: { ...layout.start },
+  };
+}
 
-  const contract = newRoom(-1, -1, 'contrato', 99, ['S']);
+export function createRun(seedInput: string, now = 0): RunState {
+  const seed = normalizeSeed(seedInput) || 'CARPA000';
+  const streams = new RngStreams(seed);
+  const floor = buildAct(streams, 1);
 
   // Golosinas: cada color con un efecto distinto.
   const gRng = streams.get('golosinas');
@@ -157,11 +170,8 @@ export function createRun(seedInput: string, now = 0): RunState {
     seed,
     streams,
     act: 1,
-    actName: 'La Carpa de Bienvenida',
-    layout,
-    rooms,
-    contract,
-    cur: { ...layout.start },
+    actName: actDef(1).name,
+    ...floor,
     player: {
       maxHp: 6,
       hp: 6,
@@ -177,7 +187,6 @@ export function createRun(seedInput: string, now = 0): RunState {
       redDamageTaken: false,
     },
     pools: new ItemPools(ITEMS),
-    boss: mapRng.chance(0.5) ? 'forzudo' : 'siameses',
     golosinaMap,
     golosinaKnown: [],
     contractOpen: false,
@@ -187,6 +196,16 @@ export function createRun(seedInput: string, now = 0): RunState {
     startedAt: now,
     seenItems: [],
   };
+}
+
+/** Pasa al siguiente acto conservando al jugador, sus objetos y las reservas. */
+export function advanceAct(run: RunState): void {
+  run.act++;
+  run.actName = actDef(run.act).name;
+  Object.assign(run, buildAct(run.streams, run.act));
+  run.contractOpen = false;
+  run.bossDefeated = false;
+  run.player.redDamageTaken = false;
 }
 
 export function currentRoom(run: RunState): RoomState {

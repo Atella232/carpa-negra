@@ -15,6 +15,7 @@ interface EndData {
   time: number;
   boss: boolean;
   contract: boolean;
+  act: number;
 }
 
 const EPITAFIOS = [
@@ -40,9 +41,10 @@ export class EndScene extends Phaser.Scene {
     });
     this.add.rectangle(0, 0, GAME_W, GAME_H, d.victory ? 0x1d1424 : 0x150a12).setOrigin(0);
     if (d.victory) {
-      txt(this, GAME_W / 2, 14, '¡Acto I superado!', 0xf2c14e, 'center').setScale(2);
-      txt(this, GAME_W / 2, 36, 'Bajas por la trampilla...', 0xefe6d8, 'center');
-      txt(this, GAME_W / 2, 46, 'pero el circo sigue debajo.', 0x8a8394, 'center');
+      const roman = ['I', 'II', 'III', 'IV'][d.act - 1] ?? String(d.act);
+      txt(this, GAME_W / 2, 14, `¡Acto ${roman} superado!`, 0xf2c14e, 'center').setScale(2);
+      txt(this, GAME_W / 2, 36, 'Las jaulas quedan atrás...', 0xefe6d8, 'center');
+      txt(this, GAME_W / 2, 46, 'El Maestro aún te espera. Continuará.', 0x8a8394, 'center');
     } else {
       txt(this, GAME_W / 2, 14, 'Fin de la función', 0xd4323f, 'center').setScale(2);
       const ep = EPITAFIOS[Math.floor(Math.random() * EPITAFIOS.length)];
@@ -54,13 +56,14 @@ export class EndScene extends Phaser.Scene {
       ['Criaturas', String(d.kills)],
       ['Salas', String(d.rooms)],
       ['Tiempo', `${mins}:${secs}`],
+      ['Acto', String(d.act)],
       ['Jefe', d.boss ? 'Derrotado' : 'Vivo'],
     ];
     rows.forEach(([k, v], i) => {
       txt(this, 60, 62 + i * 10, k, 0xefe6d8);
       txt(this, 180, 62 + i * 10, v, 0xf2c14e, 'right');
     });
-    d.items.slice(0, 12).forEach((id, i) => this.add.image(GAME_W / 2 - 99 + i * 18, 112, `obj_${id}`));
+    d.items.slice(0, 12).forEach((id, i) => this.add.image(GAME_W / 2 - 99 + i * 18, 121, `obj_${id}`));
     txt(this, GAME_W / 2, 136, 'Enter: otra función · M: menú', 0xefe6d8, 'center');
     txt(this, GAME_W / 2, 150, 'R: repetir semilla', 0x8a8394, 'center');
     txt(this, GAME_W / 2, 164, `Semilla ${formatSeed(d.seed)}`, 0x55505e, 'center');

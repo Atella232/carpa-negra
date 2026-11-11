@@ -12,6 +12,8 @@ export interface EnemyOpts {
   champion?: Champion | null;
   frame?: number;
   name?: string;
+  /** Los jefes tienen su vida ya ajustada a su acto. */
+  fixedHp?: boolean;
 }
 
 export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -39,6 +41,10 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   burnTick = 0;
   burnDmg = 0;
   slowT = 0;
+  poisonT = 0;
+  poisonTick = 0;
+  poisonDmg = 0;
+  thornCd = 0;
   fearT = 0;
   stunT = 0;
   flashT = 0;
@@ -53,7 +59,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     scene.g.enemies.add(this);
     this.champion = o.champion ?? null;
     const ch = this.champion ? CHAMPIONS[this.champion] : null;
-    this.maxHp = this.hp = o.hp * (ch?.hpMult ?? 1) * scene.difficultyHpMult();
+    this.maxHp = this.hp = o.hp * (ch?.hpMult ?? 1) * (o.fixedHp ? 1 : scene.difficultyHpMult());
     this.speed = o.speed * (ch?.speedMult ?? 1);
     this.flying = !!o.flying;
     this.name = o.name ?? texture;
@@ -89,6 +95,18 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.slowT = Math.max(0, this.slowT - dt);
     this.fearT = Math.max(0, this.fearT - dt);
     this.stunT = Math.max(0, this.stunT - dt);
+    this.thornCd = Math.max(0, this.thornCd - dt);
+    if (this.poisonT > 0) {
+      this.poisonT -= dt;
+      this.poisonTick -= dt;
+      if (this.flashT <= 0) this.setTint(0x9be26a);
+      if (this.poisonTick <= 0) {
+        this.poisonTick = 0.6;
+        this.damage(this.poisonDmg, null, 0, true);
+        if (this.dead) return;
+      }
+      if (this.poisonT <= 0) this.restoreTint();
+    }
 
     if (this.burnT > 0) {
       this.burnT -= dt;
@@ -155,6 +173,12 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.burnT = 2.1;
     this.burnDmg = Math.max(1, dmg * 0.35);
     if (this.burnTick <= 0) this.burnTick = 0.5;
+  }
+
+  poison(dmg: number): void {
+    this.poisonT = 4;
+    this.poisonDmg = Math.max(0.6, dmg * 0.22);
+    if (this.poisonTick <= 0) this.poisonTick = 0.6;
   }
 
   die(): void {

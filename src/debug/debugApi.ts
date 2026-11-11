@@ -2,7 +2,7 @@
 import type { GameScene } from '../scenes/GameScene';
 import type { Action } from '../systems/Controls';
 import { ITEMS } from '../data/items';
-import { currentRoom, roomKey, doorVisible } from '../core/run';
+import { currentRoom, roomKey, doorVisible, advanceAct } from '../core/run';
 import { EnemyKind } from '../data/enemies';
 import { spawnCreature } from '../entities/creatures';
 import type { PickupKind } from '../core/run';
@@ -125,6 +125,12 @@ export function installDebug(sc: GameScene): void {
       const from = (['S', 'W', 'E', 'N'] as const).find((d) => doorVisible(sc.run, room, d)) ?? null;
       sc.enterRoom(room, from);
       return api.estado().sala;
+    },
+    /** Salta al acto indicado (conserva al jugador). */
+    acto(n: number) {
+      while (sc.run.act < n) advanceAct(sc.run);
+      sc.scene.restart();
+      return `Acto ${sc.run.act}`;
     },
     matarTodo() {
       for (const e of sc.enemiesAlive()) e.damage(9999, null, 0);

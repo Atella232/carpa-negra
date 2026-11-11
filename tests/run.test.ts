@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { createRun, doorVisible, contractDoorDir, bossRoom } from '../src/core/run';
+import { createRun, doorVisible, contractDoorDir, bossRoom, advanceAct } from '../src/core/run';
+import { ACTO2_ROOMS } from '../src/data/rooms/acto2';
+import { TEMPLATE_ENEMY } from '../src/data/enemies';
 import { ACTO1_ROOMS, DOOR_CELLS, ROOM_COLS, ROOM_ROWS, flipRows } from '../src/data/rooms/acto1';
 import { ITEMS } from '../src/data/items';
-import { ITEM_ICONS } from '../src/art/sprites/items';
+import { ITEM_ICONS as ICONS1 } from '../src/art/sprites/items';
+import { ACT2_SPRITES } from '../src/art/sprites/act2';
+const ITEM_ICONS = { ...ICONS1, ...ACT2_SPRITES };
 
-const WALKABLE = new Set(['.', 'T', 'm', 'v', 'o', 'k', 'j', 'u', 'f', 'g']);
+const WALKABLE = new Set(['.', 'T', ...Object.keys(TEMPLATE_ENEMY)]);
+const KNOWN = new Set(['.', 'T', 'C', 'X', 'P', 'M', 'O', 'F', 'J', 'H', ...Object.keys(TEMPLATE_ENEMY)]);
 
 function reachableDoors(rows: string[]): boolean {
   const start = DOOR_CELLS.N;
@@ -28,7 +33,8 @@ function reachableDoors(rows: string[]): boolean {
 describe('plantillas de sala', () => {
   it('tienen 13×7, puertas libres y todas conectadas (con volteos)', () => {
     const ids = new Set<string>();
-    for (const t of ACTO1_ROOMS) {
+    for (const t of [...ACTO1_ROOMS, ...ACTO2_ROOMS]) {
+      for (const r of t.rows) for (const ch of r) expect(KNOWN.has(ch), `${t.id}: '${ch}'`).toBe(true);
       expect(ids.has(t.id)).toBe(false);
       ids.add(t.id);
       expect(t.rows.length).toBe(ROOM_ROWS);
@@ -43,7 +49,10 @@ describe('plantillas de sala', () => {
   });
 
   it('hay plantillas de todas las dificultades', () => {
-    for (const d of [0, 1, 2, 3]) expect(ACTO1_ROOMS.some((t) => t.diff === d)).toBe(true);
+    for (const d of [0, 1, 2, 3]) {
+      expect(ACTO1_ROOMS.some((t) => t.diff === d)).toBe(true);
+      expect(ACTO2_ROOMS.some((t) => t.diff === d)).toBe(true);
+    }
   });
 });
 
@@ -85,6 +94,26 @@ describe('objetos', () => {
       expect(ITEM_ICONS[`obj_${it.id}`], it.id).toBeTruthy();
       if (it.kind === 'activo') expect(it.active).toBeTruthy();
     }
-    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(30);
+    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(38);
+  });
+});
+
+describe('actos', () => {
+  it('el Acto I no cambia y el Acto II usa sus plantillas y jefes', () => {
+    for (let i = 0; i < 30; i++) {
+      const run = createRun(`ACTO${i}`);
+      expect(['forzudo', 'siameses']).toContain(run.boss);
+      const before = { ...run.player, passives: ['narizRoja'] };
+      run.player.passives = ['narizRoja'];
+      run.player.redDamageTaken = true;
+      advanceAct(run);
+      expect(run.act).toBe(2);
+      expect(['bestia', 'serpiente']).toContain(run.boss);
+      expect(run.player.passives).toEqual(before.passives);
+      expect(run.player.redDamageTaken).toBe(false);
+      const ids = new Set(ACTO2_ROOMS.map((t) => t.id));
+      for (const r of run.rooms.values()) if (r.type === 'normal') expect(ids.has(r.templateId!)).toBe(true);
+      expect([...run.rooms.values()].filter((r) => r.type === 'normal').length).toBeGreaterThanOrEqual(9);
+    }
   });
 });

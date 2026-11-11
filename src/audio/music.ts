@@ -4,7 +4,18 @@ import { audio, musicOut } from './sfx';
 type Song = { bpm: number; melody: (string | null)[]; bass: string[]; wave: OscillatorType };
 
 // Cada elemento es un tiempo (negra) del compás de 3/4.
-const SONGS: Record<'carpa' | 'jefe' | 'menu', Song> = {
+const SONGS: Record<'carpa' | 'jefe' | 'menu' | 'jaulas', Song> = {
+  jaulas: {
+    bpm: 116,
+    wave: 'square',
+    melody: [
+      'D5', null, 'F5', 'E5', 'D5', 'C#5', 'D5', null, 'A4', null, null, null,
+      'D5', null, 'F5', 'G5', 'A5', 'G5', 'F5', 'E5', 'D5', 'E5', null, null,
+      'A#4', 'D5', 'F5', 'A5', 'G5', 'F5', 'E5', 'G5', 'C#5', 'D5', null, null,
+      'F5', 'E5', 'D5', 'C#5', 'A4', 'C#5', 'D5', null, 'D4', null, null, null,
+    ],
+    bass: ['D2', 'A2', 'D2', 'A2', 'A#2', 'F2', 'A2', 'D2', 'G2', 'D2', 'A2', 'D2', 'D2', 'A2', 'A2', 'D2'],
+  },
   carpa: {
     bpm: 132,
     wave: 'triangle',

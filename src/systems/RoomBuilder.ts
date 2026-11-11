@@ -5,7 +5,10 @@ import { DEPTH, DOOR_POS, ROOM_H, ROOM_W, TILE, tileX, tileY, COLS } from '../co
 import { RoomState, neighborRoom, doorVisible, contractDoorDir, PickupKind, roomKey } from '../core/run';
 import { Dir, DIRS } from '../core/floorgen';
 import { hashString } from '../core/rng';
-import { ACTO1_ROOMS, flipRows } from '../data/rooms/acto1';
+import { flipRows } from '../data/rooms/acto1';
+import { actDef } from '../data/acts';
+import { Bestia, SerpienteCabeza } from '../entities/bosses2';
+import { BOSS_NAMES, BOSS_TAGLINES } from '../data/enemies';
 import { TEMPLATE_ENEMY, Champion } from '../data/enemies';
 import { bakeRoomBackground, FloorStyle, DoorStyle } from '../art/sprites/room';
 import { Obstacle, ObstacleKind } from '../entities/props';
@@ -27,6 +30,7 @@ const OBSTACLE_CHARS: Record<string, ObstacleKind> = {
   M: 'bloque',
   P: 'palomitas',
   F: 'brasero',
+  H: 'paja',
 };
 
 const BASE_PRICE: Partial<Record<PickupKind, number>> = {
@@ -39,8 +43,11 @@ const BASE_PRICE: Partial<Record<PickupKind, number>> = {
 };
 
 export function buildRoom(sc: GameScene, room: RoomState): Phaser.GameObjects.Image {
-  const style = (room.type === 'normal' ? 'normal' : room.type) as FloorStyle;
-  const key = `fondo_${roomKey(room.x, room.y)}`;
+  const act = sc.run.act;
+  let style = (room.type === 'normal' ? 'normal' : room.type) as FloorStyle;
+  if (act === 2 && (room.type === 'normal' || room.type === 'inicio')) style = 'jaulas';
+  if (act === 2 && room.type === 'jefe') style = 'guarida';
+  const key = `fondo_${act}_${roomKey(room.x, room.y)}`;
   if (!sc.textures.exists(key)) bakeRoomBackground(sc, key, style, hashString(`${sc.run.seed}:${key}`));
   const bg = sc.add.image(ROOM_W / 2, ROOM_H / 2, key).setDepth(DEPTH.floor);
 
@@ -144,13 +151,13 @@ function doorStyle(room: RoomState, target: RoomState | undefined, contract: boo
 }
 
 function rollChampion(sc: GameScene): Champion | null {
-  const chance = 0.07 + sc.stats.luck * 0.005;
+  const chance = actDef(sc.run.act).champion + sc.stats.luck * 0.005;
   if (!sc.rngCombat.chance(chance)) return null;
   return sc.rngCombat.pick<Champion>(['rojo', 'amarillo', 'azul', 'dorado']);
 }
 
 function buildTemplate(sc: GameScene, room: RoomState): void {
-  const tpl = ACTO1_ROOMS.find((t) => t.id === room.templateId)!;
+  const tpl = actDef(sc.run.act).templates.find((t) => t.id === room.templateId)!;
   const rows = flipRows(tpl.rows, room.flipX, room.flipY);
   for (let r = 0; r < rows.length; r++) {
     for (let c = 0; c < rows[r].length; c++) {
@@ -171,6 +178,12 @@ function buildTemplate(sc: GameScene, room: RoomState): void {
       } else if (ch === 'T') {
         sc.roomObjs.push(sc.add.image(x, y, 'tachuelas').setDepth(DEPTH.hazard));
         sc.spikes.push({ x, y });
+      } else if (ch === 'J') {
+        // Jaula: no se puede pasar, pero los disparos cruzan los barrotes.
+        const cage = sc.physics.add.staticImage(x, y, 'jaula').setDepth(DEPTH.world + y - 6);
+        cage.setSize(16, 16).refreshBody();
+        sc.g.pits.add(cage);
+        sc.nav.setBlocked(c, r, true);
       } else if (ch === 'O') {
         const pit = sc.physics.add.staticImage(x, y, 'foso').setDepth(DEPTH.hazard);
         pit.setSize(14, 14).refreshBody();
@@ -234,9 +247,14 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       break;
     case 'jefe':
       if (!room.cleared) {
-        sc.bossIds = sc.run.boss === 'forzudo' ? [new Forzudo(sc, cx, 54)] : spawnSiameses(sc, cx, 54);
-        if (sc.run.boss === 'siameses') addRope(sc, sc.bossIds as Siames[]);
-        sc.banner(sc.run.boss === 'forzudo' ? 'El Forzudo' : 'Los Siameses', sc.run.boss === 'forzudo' ? 'Levanta pianos. Y payasos.' : 'Dos cabezas, ningún corazón');
+        const boss = sc.run.boss;
+        if (boss === 'forzudo') sc.bossIds = [new Forzudo(sc, cx, 54)];
+        else if (boss === 'siameses') {
+          sc.bossIds = spawnSiameses(sc, cx, 54);
+          addRope(sc, sc.bossIds as Siames[]);
+        } else if (boss === 'bestia') sc.bossIds = [new Bestia(sc, cx, 54)];
+        else sc.bossIds = [new SerpienteCabeza(sc, cx, 40)];
+        sc.banner(BOSS_NAMES[boss], BOSS_TAGLINES[boss]);
       } else if (!room.data.trapdoorGone) {
         sc.addTrapdoor();
       }

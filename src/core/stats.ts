@@ -24,6 +24,8 @@ export interface ShotMods {
   backShot?: boolean;
   homing?: boolean;
   knife?: boolean; // solo aspecto
+  poison?: boolean; // veneno lento y largo
+  grow?: boolean; // las pelotas crecen con la distancia
 }
 
 export interface StatSource {
@@ -73,6 +75,8 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
     backShot: false,
     homing: false,
     knife: false,
+    poison: false,
+    grow: false,
   };
 
   for (const src of sources) {
@@ -100,6 +104,8 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
       shot.backShot ||= !!m.backShot;
       shot.homing ||= !!m.homing;
       shot.knife ||= !!m.knife;
+      shot.poison ||= !!m.poison;
+      shot.grow ||= !!m.grow;
     }
   }
 

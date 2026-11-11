@@ -20,6 +20,8 @@ export interface ShotOpts {
   rotate?: boolean;
   /** Al caer, estalla en este número de balas (pesas del Forzudo). */
   burst?: number;
+  poison?: boolean;
+  grow?: boolean;
 }
 
 export class Shot extends Phaser.Physics.Arcade.Sprite {
@@ -33,13 +35,14 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
   dead = false;
   private shadow: Phaser.GameObjects.Image;
   private speed: number;
+  private baseDamage = 0;
 
   constructor(scene: GameScene, x: number, y: number, vx: number, vy: number, friendly: boolean, opts: ShotOpts) {
     super(scene, x, y, opts.texture ?? (friendly ? 'pelota' : 'bala'));
     this.friendly = friendly;
     this.opts = {
       scale: 1, pierce: false, bounce: 0, burn: false, fragment: false, spectral: false,
-      homing: false, isFragment: false, knockback: 70, texture: this.texture.key, rotate: false, burst: 0,
+      homing: false, isFragment: false, knockback: 70, texture: this.texture.key, rotate: false, burst: 0, poison: false, grow: false,
       ...opts,
     };
     scene.add.existing(this);
@@ -48,7 +51,9 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     const s = this.opts.scale;
     this.setScale(s);
     const r = Math.max(2, (friendly ? 3 : 2.5) * s);
-    this.body.setCircle(r / s, this.width / 2 - r / s, this.height / 2 - r / s);
+    // La pelota vuela a la altura de la cabeza, pero choca a la altura del cuerpo
+    // (más cerca de su sombra): así un disparo bien alineado nunca pasa por encima.
+    this.body.setCircle(r / s, this.width / 2 - r / s, this.height / 2 - r / s + 5 / s);
     this.body.setVelocity(vx, vy);
     this.body.setBounce(this.opts.bounce > 0 ? 1 : 0);
     this.speed = Math.hypot(vx, vy);
@@ -56,6 +61,8 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     this.bouncesLeft = this.opts.bounce;
     if (this.opts.rotate) this.setRotation(Math.atan2(vy, vx));
     if (this.opts.burn && friendly) this.setTexture('pelota_fuego');
+    else if (this.opts.poison && friendly && !this.opts.rotate) this.setTexture('pelota_veneno');
+    this.baseDamage = this.opts.damage;
     this.setDepth(DEPTH.shot);
     this.shadow = scene.add.image(x, y + 8, 'sombra').setScale(0.5 * s).setDepth(DEPTH.shadow).setAlpha(0.7);
   }
@@ -77,6 +84,12 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
         const na = cur + Phaser.Math.Clamp(diff, -4 * dt, 4 * dt);
         this.body.setVelocity(Math.cos(na) * this.speed, Math.sin(na) * this.speed);
       }
+    }
+    // Bola de Equilibrista: crece y pega más cuanto más lejos llega.
+    if (this.opts.grow && this.friendly) {
+      const k = Math.min(1, t);
+      this.setScale(this.opts.scale * (1 + k * 1.1));
+      this.opts.damage = this.baseDamage * (1 + k * 1.2);
     }
     // Al final del recorrido, la pelota cae.
     if (t > 0.78 && !this.opts.rotate) this.body.velocity.y += 260 * dt;

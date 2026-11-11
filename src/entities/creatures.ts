@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { Enemy } from './Enemy';
 import { Champion, ENEMIES, EnemyKind } from '../data/enemies';
+import { Leon, Cobra, Oso, Loro, Domador, Payasito } from './creatures2';
 
 const anim = (t: number, fps: number, frames: number) => Math.floor(t * fps) % frames;
 
@@ -305,5 +306,17 @@ export function spawnCreature(
       return new Tragafuegos(scene, x, y, d.texture, o);
     case 'pulga':
       return new Pulga(scene, x, y, d.texture, o);
+    case 'leon':
+      return new Leon(scene, x, y, d.texture, o);
+    case 'cobra':
+      return new Cobra(scene, x, y, d.texture, o);
+    case 'oso':
+      return new Oso(scene, x, y, d.texture, o);
+    case 'loro':
+      return new Loro(scene, x, y, d.texture, o);
+    case 'domador':
+      return new Domador(scene, x, y, d.texture, o);
+    case 'payasito':
+      return new Payasito(scene, x, y, d.texture, o);
   }
 }

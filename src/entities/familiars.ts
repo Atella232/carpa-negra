@@ -167,6 +167,36 @@ export class Paloma extends Familiar {
   }
 }
 
+/** Leoncito: corretea hacia el enemigo más cercano y le muerde. */
+export class Leoncito extends Familiar {
+  biteCd = 0;
+  constructor(scene: GameScene) {
+    super(scene, 'leoncito');
+  }
+  update(dt: number): void {
+    this.t += dt;
+    this.biteCd = Math.max(0, this.biteCd - dt);
+    const e = this.scene.nearestEnemy(this.x, this.y, 140);
+    const p = this.scene.player;
+    const tx = e ? e.x : p.x - 14;
+    const ty = e ? e.y + 2 : p.y + 4;
+    const d = Phaser.Math.Distance.Between(this.x, this.y, tx, ty);
+    if (d > 3) {
+      const speed = e ? 95 : Math.min(120, d * 4);
+      const a = Math.atan2(ty - this.y, tx - this.x);
+      this.sprite.x += Math.cos(a) * speed * dt;
+      this.sprite.y += Math.sin(a) * speed * dt;
+      this.sprite.setFlipX(Math.cos(a) < 0);
+    }
+    this.sprite.setFrame(d > 3 ? Math.floor(this.t * 8) % 2 : 0);
+    this.sprite.setDepth(DEPTH.world + this.sprite.y);
+    if (e && this.biteCd <= 0 && d < 12) {
+      e.damage(4, this.sprite, 30);
+      this.biteCd = 0.4;
+    }
+  }
+}
+
 export function createFamiliar(scene: GameScene, kind: FamiliarKind): Familiar {
   switch (kind) {
     case 'globoPerro':
@@ -175,5 +205,7 @@ export function createFamiliar(scene: GameScene, kind: FamiliarKind): Familiar {
       return new MonoJuguete(scene);
     case 'pulgaFiel':
       return new PulgaFiel(scene);
+    case 'leoncito':
+      return new Leoncito(scene);
   }
 }

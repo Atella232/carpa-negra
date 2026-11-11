@@ -170,7 +170,7 @@ export class Bomb extends Phaser.Physics.Arcade.Sprite {
   }
 }
 
-export type ObstacleKind = 'cajon' | 'cajon_marcado' | 'bloque' | 'palomitas' | 'brasero';
+export type ObstacleKind = 'cajon' | 'cajon_marcado' | 'bloque' | 'palomitas' | 'brasero' | 'paja';
 
 export class Obstacle extends Phaser.Physics.Arcade.Image {
   declare body: Phaser.Physics.Arcade.StaticBody;

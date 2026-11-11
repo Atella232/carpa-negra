@@ -5,6 +5,7 @@ import type { GameScene } from './GameScene';
 import { GAME_W, HUD_H, ROOM_H } from '../config';
 import { txt, setTxt } from '../ui/text';
 import { item } from '../data/items';
+import { BOSS_NAMES } from '../data/enemies';
 import { GOLOSINA_TINT } from '../data/golosinas';
 import { doorVisible, roomKey, RoomState } from '../core/run';
 import { DIRS, DIR_VEC } from '../core/floorgen';
@@ -191,7 +192,7 @@ export class HudScene extends Phaser.Scene {
     g.fillStyle(0x3a1220, 1).fillRect(x, y, w, 4);
     g.fillStyle(0xd4323f, 1).fillRect(x, y, Math.round((w * hp) / max), 4);
     g.fillStyle(0xf2a3b5, 1).fillRect(x, y, Math.round((w * hp) / max), 1);
-    setTxt(this.bossName, this.gs.run.boss === 'forzudo' ? 'El Forzudo' : 'Los Siameses');
+    setTxt(this.bossName, BOSS_NAMES[this.gs.run.boss]);
     this.bossName.setVisible(true);
   }
 }

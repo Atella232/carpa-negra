@@ -3,8 +3,8 @@
 import type { PoolName } from '../core/itempool';
 import type { StatSource } from '../core/stats';
 
-export type ActiveEffect = 'tarta' | 'sombrero' | 'latigo' | 'canon' | 'bocina';
-export type FamiliarKind = 'globoPerro' | 'monoJuguete' | 'pulgaFiel';
+export type ActiveEffect = 'tarta' | 'sombrero' | 'latigo' | 'canon' | 'bocina' | 'jaula';
+export type FamiliarKind = 'globoPerro' | 'monoJuguete' | 'pulgaFiel' | 'leoncito';
 
 export interface ItemFlags {
   magnet?: boolean; // atrae boletos y recogibles
@@ -13,6 +13,7 @@ export interface ItemFlags {
   flight?: boolean; // pasa por encima de obstáculos, fosos y tachuelas
   trail?: boolean; // rastro de serrín que frena
   burstOnHurt?: boolean; // ráfaga radial al recibir daño
+  thorns?: boolean; // quien te toca se pincha
 }
 
 export interface ItemDef extends StatSource {
@@ -172,6 +173,41 @@ export const ITEMS: ItemDef[] = [
   {
     id: 'bocina', name: 'Bocina', desc: '¡MOC MOC!', kind: 'activo',
     pools: [...ALL, 'puesto'], active: { charges: 1, effect: 'bocina' },
+  },
+  // --- Llegan con el Acto II (aparecen en cualquier acto) ---
+  {
+    id: 'melenaLeon', name: 'Melena de León', desc: 'Mucho daño, algo más lento', kind: 'pasivo',
+    pools: [...ALL, 'jefe'], stats: { damage: 1.5, speed: -0.3 },
+    lore: 'Arrancada en vida. El león aún la echa de menos.',
+  },
+  {
+    id: 'colmilloCobra', name: 'Colmillo de Cobra', desc: 'Disparos venenosos', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { poison: true },
+  },
+  {
+    id: 'plumaLoro', name: 'Pluma de Loro', desc: 'Disparos rápidos y lejanos', kind: 'pasivo',
+    pools: [...ALL], stats: { shotSpeed: 2, range: 1.5, tears: 0.3 },
+    lore: 'El loro repetía tu nombre. Ya no.',
+  },
+  {
+    id: 'corazonOso', name: 'Corazón de Oso', desc: '+2 globos', kind: 'pasivo',
+    pools: [...ALL, 'jefe'], onPickup: { maxHp: 4, heal: 4 }, stats: { speed: -0.3 },
+  },
+  {
+    id: 'collarPinchos', name: 'Collar de Pinchos', desc: 'Quien te toca, se pincha', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], flags: { thorns: true },
+  },
+  {
+    id: 'bolaEquilibrista', name: 'Bola de Equilibrista', desc: 'Las pelotas crecen al volar', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { grow: true }, stats: { range: 1 },
+  },
+  {
+    id: 'leoncito', name: 'Leoncito', desc: 'Muerde a tus enemigos', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], familiar: 'leoncito',
+  },
+  {
+    id: 'jaulaPortatil', name: 'Jaula Portátil', desc: 'Enjaula a la fiera más cercana', kind: 'activo',
+    pools: [...ALL, 'puesto'], active: { charges: 2, effect: 'jaula' },
   },
   // --- El Contrato ---
   {

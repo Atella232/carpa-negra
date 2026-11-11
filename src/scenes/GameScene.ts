@@ -1,7 +1,8 @@
 // Escena principal: bucle de juego, colisiones y API para entidades y sistemas.
 import Phaser from 'phaser';
 import { DEPTH, DOOR_POS, HUD_H, ROOM_H, ROOM_W, tileX, tileY, toCol, toRow } from '../config';
-import { RunState, currentRoom, neighborRoom, PickupKind, RoomState, contractDoorDir, bossRoom } from '../core/run';
+import { RunState, currentRoom, neighborRoom, PickupKind, RoomState, contractDoorDir, bossRoom, advanceAct } from '../core/run';
+import { actDef } from '../data/acts';
 import { computeStats, FinalStats } from '../core/stats';
 import { Rng } from '../core/rng';
 import { Dir, OPPOSITE } from '../core/floorgen';
@@ -144,7 +145,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.enterRoom(currentRoom(this.run), null);
-    this.banner(`Acto ${this.run.act}`, this.run.actName);
+    this.banner(`Acto ${['I', 'II', 'III', 'IV'][this.run.act - 1]}`, this.run.actName);
     if (DEBUG) installDebug(this);
   }
 
@@ -188,6 +189,12 @@ export class GameScene extends Phaser.Scene {
     add.overlap(P, g.enemies, (_p, e) => {
       const en = e as Enemy;
       if (en.dead || en.contact <= 0 || en.lift > 8 || en.wake > 0) return;
+      // Collar de Pinchos: quien te toca se pincha.
+      if (en.thornCd <= 0 && this.effects.hasFlag('thorns')) {
+        en.thornCd = 0.5;
+        en.damage(8, this.player.sprite, 90);
+        if (en.dead) return;
+      }
       this.hurtPlayer(en.contact, en.x, en.y);
     });
     add.overlap(P, g.pickups, (_p, pk) => this.touchPickup(pk as Pickup));
@@ -214,6 +221,8 @@ export class GameScene extends Phaser.Scene {
   private shotHitSolid(s: Shot, o: Obstacle): void {
     if (s.dead) return;
     if (o.breakableByShots) this.hitObstacle(o);
+    // La paja arde con los malabares en llamas.
+    else if (o.kind === 'paja' && s.opts.burn) this.destroyObstacle(o, true);
     s.pop();
   }
 
@@ -222,6 +231,7 @@ export class GameScene extends Phaser.Scene {
     s.hit.add(e);
     e.damage(s.opts.damage, { x: s.x - s.body.velocity.x, y: s.y - s.body.velocity.y }, s.opts.knockback);
     if (s.opts.burn && !e.dead) e.burn(s.opts.damage);
+    if (s.opts.poison && !e.dead) e.poison(s.opts.damage);
     if (!s.opts.pierce || e.invulnerable) s.pop();
   }
 
@@ -301,7 +311,7 @@ export class GameScene extends Phaser.Scene {
     this.player.invuln = Math.max(this.player.invuln, 0.3);
 
     const isBossFight = room.type === 'jefe' && !room.cleared;
-    playMusic(isBossFight ? 'jefe' : 'carpa');
+    playMusic(isBossFight ? 'jefe' : actDef(this.run.act).music);
     if (isBossFight && firstVisit) {
       this.snd('jefe');
       this.shake(400, 0.006);
@@ -428,7 +438,7 @@ export class GameScene extends Phaser.Scene {
 
   private onBossDefeated(): void {
     this.run.bossDefeated = true;
-    playMusic('carpa');
+    playMusic(actDef(this.run.act).music);
     this.banner('¡Ovación!', 'El público enloquece');
     this.snd('aplauso');
     for (const pl of this.enemyShotsNear(120, 72, 400)) pl.pop();
@@ -551,7 +561,14 @@ export class GameScene extends Phaser.Scene {
       this.tweens.add({ targets: this.trapdoor, scale: 1.2, duration: 200, yoyo: true });
       this.player.setVisible(false);
       this.snd('secreto');
-      this.time.delayedCall(700, () => this.finish(true));
+      this.time.delayedCall(700, () => {
+        if (actDef(this.run.act).final) this.finish(true);
+        else {
+          // Siguiente acto: mismo payaso, mismos objetos, carpa nueva.
+          advanceAct(this.run);
+          this.scene.restart();
+        }
+      });
     }
   }
 
@@ -603,6 +620,7 @@ export class GameScene extends Phaser.Scene {
       rooms: r.roomsCleared,
       time: Math.round((Date.now() - r.startedAt) / 1000),
       boss: r.bossDefeated,
+      act: r.act,
       contract: r.contractOpen,
     });
   }
@@ -802,7 +820,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   difficultyHpMult(): number {
-    return 1;
+    return actDef(this.run.act).hpMult;
   }
 
   spawnShot(x: number, y: number, vx: number, vy: number, friendly: boolean, opts: ShotOpts): Shot {

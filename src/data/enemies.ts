@@ -7,9 +7,16 @@ export type EnemyKind =
   | 'caja'
   | 'monociclista'
   | 'tragafuegos'
-  | 'pulga';
+  | 'pulga'
+  // Acto II
+  | 'leon'
+  | 'cobra'
+  | 'oso'
+  | 'loro'
+  | 'domador'
+  | 'payasito';
 
-export type BossKind = 'forzudo' | 'siameses';
+export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente';
 
 export interface EnemyDef {
   kind: EnemyKind;
@@ -43,6 +50,13 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
     body: { w: 10, h: 12, dy: 3 },
   },
   pulga: { kind: 'pulga', name: 'Pulga amaestrada', hp: 7, speed: 0, texture: 'pulga', body: { w: 10, h: 8, dy: 2 } },
+  // --- Acto II: Las Jaulas ---
+  leon: { kind: 'leon', name: 'León sarnoso', hp: 22, speed: 38, texture: 'leon', body: { w: 14, h: 10, dy: 3 } },
+  cobra: { kind: 'cobra', name: 'Cobra del faquir', hp: 14, speed: 0, texture: 'cobra', body: { w: 12, h: 10, dy: 5 } },
+  oso: { kind: 'oso', name: 'Oso bailarín', hp: 30, speed: 22, texture: 'oso', body: { w: 14, h: 12, dy: 4 } },
+  loro: { kind: 'loro', name: 'Loro carroñero', hp: 8, speed: 60, flying: true, texture: 'loro', body: { w: 10, h: 9, dy: 0 } },
+  domador: { kind: 'domador', name: 'Domador zombi', hp: 20, speed: 30, texture: 'domador', body: { w: 10, h: 12, dy: 4 } },
+  payasito: { kind: 'payasito', name: 'Payasito triste', hp: 5, speed: 55, texture: 'payasito', body: { w: 8, h: 8, dy: 2 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -55,6 +69,12 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   u: 'monociclista',
   f: 'tragafuegos',
   g: 'pulga',
+  l: 'leon',
+  c: 'cobra',
+  b: 'oso',
+  r: 'loro',
+  d: 'domador',
+  p: 'payasito',
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';
@@ -69,4 +89,13 @@ export const CHAMPIONS: Record<Champion, { tint: number; hpMult: number; speedMu
 export const BOSS_NAMES: Record<BossKind, string> = {
   forzudo: 'El Forzudo',
   siameses: 'Los Siameses',
+  bestia: 'La Bestia de la Jaula',
+  serpiente: 'La Mujer Serpiente',
+};
+
+export const BOSS_TAGLINES: Record<BossKind, string> = {
+  forzudo: 'Levanta pianos. Y payasos.',
+  siameses: 'Dos cabezas, ningún corazón',
+  bestia: 'Nadie le da de comer desde 1923',
+  serpiente: 'Se dobla. Te dobla.',
 };

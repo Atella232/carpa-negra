@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import type { Player } from '../entities/Player';
-import { item, ActiveEffect } from '../data/items';
+import { item, ActiveEffect, ItemFlags } from '../data/items';
 import { GOLOSINA_EFFECTS, GolosinaEffect } from '../data/golosinas';
 import { Paloma } from '../entities/familiars';
 import { DEPTH } from '../config';
@@ -15,7 +15,7 @@ export class ItemEffects {
 
   constructor(private sc: GameScene) {}
 
-  hasFlag(flag: 'magnet' | 'shopDiscount' | 'revealMap' | 'flight' | 'trail' | 'burstOnHurt'): boolean {
+  hasFlag(flag: keyof ItemFlags): boolean {
     return this.sc.run.player.passives.some((id) => item(id).flags?.[flag]);
   }
 
@@ -90,6 +90,31 @@ export class ItemEffects {
         pl.invuln = Math.max(pl.invuln, 0.55);
         sc.snd('canon');
         sc.shake(120, 0.01);
+        break;
+      }
+      case 'jaula': {
+        const e = sc.nearestEnemy(pl.x, pl.y, 220);
+        if (!e) {
+          sc.snd('error');
+          break;
+        }
+        sc.snd('latigo');
+        e.damage(15, null, 0);
+        if (e.dead) break;
+        const dur = e.isBoss ? 2 : 6;
+        e.stunT = dur;
+        const cage = sc.add.image(e.x, e.y, 'jaula').setDepth(DEPTH.world + e.y + 8).setAlpha(0.9);
+        sc.roomObjs.push(cage);
+        let left = dur;
+        const follow = (dt: number) => {
+          left -= dt;
+          if (!e.active || e.dead || left <= 0) {
+            cage.setVisible(false);
+            return;
+          }
+          cage.setPosition(e.x, e.y);
+        };
+        sc.roomUpdate.push(follow);
         break;
       }
       case 'bocina': {

@@ -163,6 +163,8 @@ export class Player {
         fragment: sh.fragment,
         spectral: sh.spectral,
         homing: sh.homing,
+        poison: sh.poison,
+        grow: sh.grow,
         texture: sh.knife ? 'cuchillo' : 'pelota',
         rotate: sh.knife,
       });

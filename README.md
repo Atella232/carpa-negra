@@ -5,7 +5,9 @@ ambientado en un circo de los horrores. Pompón, un payaso curioso, entra en una
 carpa ambulante y descubre que no hay salida fácil: cada sala esconde criaturas
 del circo, objetos que se combinan entre sí y un jefe al final de cada acto.
 
-Esta primera versión incluye el **Acto I: La Carpa de Bienvenida** completo.
+Esta versión incluye dos actos completos: **Acto I: La Carpa de Bienvenida** y
+**Acto II: Las Jaulas**. La trampilla del jefe del Acto I baja al Acto II
+conservando vida y objetos.
 
 ## Jugar
 
@@ -32,7 +34,7 @@ juego en `dist/` (es una web estática).
 
 En el menú: **S** para escribir una semilla y **A** para ver el álbum de objetos.
 
-## Qué hay en el Acto I
+## Acto I: La Carpa de Bienvenida
 
 - **Piso generado al azar** con semilla reproducible: 8–10 salas normales a
   partir de 24 plantillas con volteos, más las salas especiales.
@@ -44,12 +46,31 @@ En el menú: **S** para escribir una semilla y **A** para ver el álbum de objet
   platillero, lanzacuchillos, caja sorpresa, monociclista, tragafuegos y pulga
   amaestrada.
 - **2 jefes** (uno al azar): El Forzudo y Los Siameses.
-- **33 objetos** (30 normales + 3 de El Contrato) que se combinan: triple
+- **33 objetos** en el Acto I (30 normales + 3 de El Contrato) que se combinan: triple
   malabar + cuchillos + palomitas + helio, etc.
 - **7 golosinas misteriosas** cuyo efecto cambia en cada partida.
 - **Aplausómetro**: mata sin que te den y el público te lanza regalos.
 - **El Contrato**: si vences al jefe sin perder globos rojos en todo el acto,
   el Maestro de Ceremonias te ofrece objetos a cambio de globos máximos.
+
+## Acto II: Las Jaulas
+
+- Piso más grande (9–11 salas normales) con 18 plantillas propias y paja por
+  el suelo. Las criaturas del Acto I que aparecen aquí son un 30 % más duras.
+- **Obstáculos nuevos**: jaulas (no se pueden cruzar, pero las pelotas pasan
+  entre los barrotes) y fardos de paja (se rompen con petardos o se queman con
+  los Malabares en Llamas).
+- **6 criaturas**: león sarnoso (salta sobre ti), cobra del faquir (escupe
+  veneno y cambia de cesto), oso bailarín (gira soltando una espiral), loro
+  carroñero (vuela en círculos y se lanza en picado), domador zombi (latigazos
+  en línea) y payasito triste (llora balas al morir).
+- **2 jefes**: La Bestia de la Jaula (ruge en anillos, salta y llama a sus
+  payasitos) y La Mujer Serpiente (cuerpo de segmentos que la siguen; los
+  golpes al cuerpo también le hacen daño).
+- **8 objetos nuevos** (pueden salir en cualquier acto): Melena de León,
+  Colmillo de Cobra (veneno), Pluma de Loro, Corazón de Oso, Collar de Pinchos,
+  Bola de Equilibrista (las pelotas crecen al volar), Leoncito (familiar) y
+  Jaula Portátil (objeto activo).
 
 ## Estructura
 
@@ -82,7 +103,8 @@ npm run build     # comprobación de tipos + compilación
 En desarrollo (o con `?debug=1`) existe `window.__juego` en la consola:
 
 - `__juego.estado()`, `__juego.mapa()`: estado de la partida y mapa del piso.
-- `__juego.ir('jefe')`, `__juego.dar('tripleMalabar')`, `__juego.dios()`.
+- `__juego.ir('jefe')`, `__juego.dar('tripleMalabar')`, `__juego.dios()`,
+  `__juego.acto(2)` (salta al Acto II conservando al jugador).
 - `__juego.hacer({ derecha: true, dispararArriba: true }, 30)`: simula
   fotogramas con teclas pulsadas.
 

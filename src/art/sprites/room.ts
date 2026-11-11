@@ -17,9 +17,13 @@ export type FloorStyle =
   | 'diana'
   | 'barraca'
   | 'secreta'
-  | 'contrato';
+  | 'contrato'
+  | 'jaulas'
+  | 'guarida';
 
-const STYLE: Record<FloorStyle, { floor: string; dot: string; stripeA: string; stripeB: string; ring?: string }> = {
+const STYLE: Record<FloorStyle, { floor: string; dot: string; stripeA: string; stripeB: string; ring?: string; bars?: boolean; straw?: boolean }> = {
+  jaulas: { floor: '#4a4020', dot: '#6b5a28', stripeA: '#1f3320', stripeB: '#0f1a12', bars: true, straw: true },
+  guarida: { floor: '#3a2a14', dot: '#54401c', stripeA: '#2a1a0c', stripeB: '#0f0a06', ring: '#6b1a24', bars: true, straw: true },
   normal: { floor: '#5a3b25', dot: '#7a5233', stripeA: '#5e1420', stripeB: '#2a1430' },
   inicio: { floor: '#5a3b25', dot: '#7a5233', stripeA: '#5e1420', stripeB: '#2a1430', ring: '#8f1d2c' },
   jefe: { floor: '#3e2418', dot: '#5a3020', stripeA: '#3a0c14', stripeB: '#150a12', ring: '#5e1420' },
@@ -46,6 +50,14 @@ export function bakeRoomBackground(
     for (let i = 0; i < 520; i++) {
       p.px(rng.int(16, ROOM_W - 17), rng.int(16, ROOM_H - 17), rng.chance(0.7) ? s.dot : '#2e1c12');
     }
+    // Paja esparcida por el suelo (Acto II).
+    if (s.straw) {
+      for (let i = 0; i < 70; i++) {
+        const x = rng.int(18, ROOM_W - 22),
+          y = rng.int(18, ROOM_H - 20);
+        p.line(x, y, x + rng.int(-3, 3), y + rng.int(1, 3), rng.chance(0.5) ? '#c9a24a' : '#8a6a2a');
+      }
+    }
     // Manchas viejas en el suelo (no todas las salas).
     const stains = rng.int(0, 3);
     for (let i = 0; i < stains; i++) {
@@ -57,6 +69,18 @@ export function bakeRoomBackground(
     }
     // Paredes de lona: rayas que convergen hacia el centro.
     paintWalls(p, s.stripeA, s.stripeB);
+    // Barrotes de hierro sobre la lona (Acto II).
+    if (s.bars) {
+      for (let x = 4; x < ROOM_W; x += 8) {
+        p.rect(x, 0, 2, 14, '#55505e');
+        p.rect(x, ROOM_H - 14, 2, 14, '#55505e');
+        p.px(x, 0, '#a3a0ad').px(x, ROOM_H - 14, '#a3a0ad');
+      }
+      for (let y = 20; y < ROOM_H - 16; y += 8) {
+        p.rect(0, y, 14, 2, '#55505e');
+        p.rect(ROOM_W - 14, y, 14, 2, '#55505e');
+      }
+    }
     // Sombra interior junto a las paredes.
     p.rect(16, 16, ROOM_W - 32, 3, 'rgba(0,0,0,0.35)');
     p.rect(16, 16, 3, ROOM_H - 32, 'rgba(0,0,0,0.25)');
