@@ -91,6 +91,7 @@ export class Pedestal {
   contractCost: number;
   t = Math.random() * 6;
   cooldown = 0.6;
+  lastTouch = -Infinity;
 
   constructor(public scene: GameScene, public x: number, public y: number, item: string | null, opts: { price?: number; contractCost?: number } = {}) {
     this.item = item;

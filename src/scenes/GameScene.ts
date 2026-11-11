@@ -67,6 +67,7 @@ export class GameScene extends Phaser.Scene {
   familiars: Familiar[] = [];
   tempFamiliars: Paloma[] = [];
   trapdoor: Phaser.GameObjects.Sprite | null = null;
+  private trapdoorArmed = false;
   bossIds: Enemy[] = [];
 
   god = false;
@@ -80,6 +81,31 @@ export class GameScene extends Phaser.Scene {
 
   constructor() {
     super('Juego');
+  }
+
+  /** Phaser reutiliza la instancia al reiniciar: se limpia todo el estado aquí. */
+  init(): void {
+    this.room = undefined as unknown as RoomState;
+    this.nav = new Nav();
+    this.doors = [];
+    this.pedestals = [];
+    this.hazards = [];
+    this.spikes = [];
+    this.roomObjs = [];
+    this.doorObjs = [];
+    this.roomUpdate = [];
+    this.familiars = [];
+    this.tempFamiliars = [];
+    this.trapdoor = null;
+    this.trapdoorArmed = false;
+    this.bossIds = [];
+    this.god = false;
+    this.transitioning = false;
+    this.mareoT = 0;
+    this.banners = [];
+    this.bg = null;
+    this.pickupMsgCd = 0;
+    this.roomTime = 0;
   }
 
   create(): void {
@@ -420,9 +446,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   addTrapdoor(): void {
-    const t = this.add.sprite(ROOM_W / 2, tileY(5), 'trampilla', 1).setDepth(DEPTH.hazard);
+    // Fuera de la línea de cualquier puerta, para no caer sin querer.
+    const t = this.add.sprite(tileX(10), tileY(5), 'trampilla', 1).setDepth(DEPTH.hazard);
     this.roomObjs.push(t);
     this.trapdoor = t;
+    this.trapdoorArmed = false;
   }
 
   addPedestal(x: number, y: number, id: string | null, opts: { price?: number; contractCost?: number } = {}): Pedestal {
@@ -514,7 +542,10 @@ export class GameScene extends Phaser.Scene {
 
   private checkTrapdoor(): void {
     if (!this.trapdoor || this.transitioning) return;
-    if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trapdoor.x, this.trapdoor.y) < 9) {
+    const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.trapdoor.x, this.trapdoor.y);
+    // Solo se activa si el jugador se ha alejado antes (no al aparecer encima).
+    if (d > 24) this.trapdoorArmed = true;
+    if (this.trapdoorArmed && d < 9) {
       this.transitioning = true;
       this.player.locked = 5;
       this.tweens.add({ targets: this.trapdoor, scale: 1.2, duration: 200, yoyo: true });
@@ -635,7 +666,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private touchPedestal(ped: Pedestal | undefined): void {
-    if (!ped || !ped.item || ped.cooldown > 0 || this.player.dead) return;
+    if (!ped) return;
+    // Un toque continuo cuenta una sola vez: hay que separarse para volver a cambiar.
+    const now = this.time.now;
+    const continuing = now - ped.lastTouch < 200;
+    ped.lastTouch = now;
+    if (continuing || !ped.item || ped.cooldown > 0 || this.player.dead) return;
     const p = this.run.player;
     const def = item(ped.item);
     if (ped.price > 0) {

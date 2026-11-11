@@ -27,6 +27,8 @@ export class HudScene extends Phaser.Scene {
 
   create(): void {
     this.gs = this.scene.get('Juego') as GameScene;
+    this.hearts = [];
+    this.counters = [];
     this.gfx = this.add.graphics();
     for (let i = 0; i < 12; i++) {
       this.hearts.push(this.add.image(31 + (i % 6) * 8, 7 + Math.floor(i / 6) * 10, 'hud_globo').setVisible(false));
