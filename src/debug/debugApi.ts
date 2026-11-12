@@ -292,14 +292,14 @@ export function installDebug(sc: GameScene): void {
         for (let i = 0; i < veces; i++) {
           for (const flips of [{}, { flipX: true, flipY: true }]) {
             if (sc.player.dead) break;
-            // Mucha vida para que una mala sala no acabe la prueba.
-            p.maxHp = 24;
-            p.hp = 24;
+            // Muchísima vida para que una mala sala no acabe la prueba.
+            p.maxHp = 200;
+            p.hp = 200;
             p.shield = 0;
             api.sala(tpl.id, flips);
             av(30);
             const r = botFight(sc, av, maxSecs);
-            lost += Math.max(0, 24 - p.hp);
+            lost += Math.max(0, 200 - p.hp);
             secs += r.secs;
             ok += r.cleared ? 1 : 0;
             n++;
