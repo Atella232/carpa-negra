@@ -177,8 +177,10 @@ export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layo
   for (const r of layout.rooms) {
     const room = newRoom(r.x, r.y, r.type, r.dist, roomDoors(layout, r.x, r.y));
     if (r.type === 'normal') {
-      // Más dificultad cuanto más lejos del inicio.
-      const allowed = r.dist <= 1 ? [0, 1, 1, 2] : r.dist <= 3 ? [1, 2, 2, 3] : [2, 3, 3];
+      // Más dificultad cuanto más lejos del inicio. Las salas difíciles empiezan
+      // a 5 salas del inicio (antes, a 4): la sala de más de cada acto añade
+      // variedad, no dificultad.
+      const allowed = r.dist <= 1 ? [0, 1, 1, 2] : r.dist <= 4 ? [1, 2, 2, 3] : [2, 3, 3];
       const want = mapRng.pick(allowed);
       const tpl = mapRng.pick(pickableTemplates(def.templates, want, used));
       used.add(tpl.id);
@@ -383,9 +385,10 @@ export function advanceAct(run: RunState): void {
   Object.assign(run, buildAct(run.streams, run.act));
   run.contractOpen = false;
   run.bossDefeated = false;
-  // Entre actos se recupera un globo (dos si no perdiste rojos en el acto).
+  // Entre actos se recuperan dos globos (tres si no perdiste rojos en el acto):
+  // desde la versión con más variedad cada acto tiene más salas que pelear.
   const p = run.player;
-  const heal = p.redDamageTaken ? 2 : 4;
+  const heal = p.redDamageTaken ? 4 : 6;
   run.player.redDamageTaken = false;
   run.player.netUsed = false;
   assignPreItems(run);

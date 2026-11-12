@@ -12,8 +12,8 @@ El juego completo tiene **cuatro actos** y **dos finales**:
 3. **La Casa de los Espejos**
 4. **La Pista Central**, con El Maestro de Ceremonias como jefe final.
 
-Entre actos cae un telón, se conservan los objetos y se recupera un globo (dos si
-no perdiste globos rojos en el acto).
+Entre actos cae un telón, se conservan los objetos y se recuperan dos globos (tres
+si no perdiste globos rojos en el acto).
 
 ## Jugar
 

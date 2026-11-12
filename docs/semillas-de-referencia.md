@@ -18,6 +18,56 @@ Cómo repetirlo (en la consola, con `?seed=XXXX&jugar`):
 for (let k = 0; k < 4; k++) { const r = __juego.botActo(); console.log(r); if (r.muerto) break; /* esperar el telón */ }
 ```
 
+## Versión con más variedad (noviembre de 2026)
+
+Plan y desviaciones: `docs/plan-variedad.md`.
+
+### Sala por sala (`__juego.probarSalas()`)
+
+El bot juega cada plantilla 6 veces (3 sin voltear y 3 con los dos volteos),
+con mucha vida para que no se corte. Formato de cada celda: salas · media de
+medios globos perdidos · peor sala. «Antes» es la versión de `main` con los
+arreglos de la Fase 0; «Después», la de esta rama.
+
+| Acto | Dif. | Antes | Después (todas) | Solo las nuevas |
+|---|---|---|---|---|
+| I | 1 | 5 · 0.5 · 1.0 | 7 · 0.4 · 0.8 | 2 · 0.2 |
+| I | 2 | 10 · 0.4 · 2.2 | 14 · 0.5 · 1.7 | 4 · 0.6 |
+| I | 3 | 8 · 6.3 · 47.5 | 12 · 0.6 · 1.2 | 4 · 0.6 |
+| II | 1 | 3 · 0.7 · 1.2 | 5 · 0.9 · 2.0 | 2 · 0.5 |
+| II | 2 | 8 · 0.7 · 3.5 | 12 · 0.6 · 2.3 | 4 · 0.5 |
+| II | 3 | 6 · 0.6 · 1.2 | 10 · 0.8 · 2.0 | 4 · 0.7 |
+| III | 1 | 4 · 0.1 · 0.3 | 6 · 0.0 · 0.2 | 2 · 0.0 |
+| III | 2 | 9 · 2.1 · 9.7 | 13 · 3.5 · 35.2 | 4 · 0.6 |
+| III | 3 | 8 · 5.0 · 8.2 | 12 · 4.8 · 21.2 | 4 · 1.6 |
+| IV | 1 | 4 · 0.3 · 0.5 | 6 · 0.6 · 1.8 | 2 · 0.3 |
+| IV | 2 | 7 · 1.2 · 3.3 | 11 · 1.2 · 5.7 | 4 · 1.2 |
+| IV | 3 | 8 · 3.2 · 11.5 | 12 · 3.3 · 10.0 | 4 · 2.4 |
+
+Las salas nuevas salen, de media, más suaves que las antiguas de su nivel. Las
+salas peores siguen siendo antiguas (`teatro_munecos`, `guardia_sables`,
+`compania_munecos`), con mucha variación entre pasadas. La caída del Acto I
+nivel 3 (de 6,3 a 0,6) viene de que el fuego ya no para los disparos.
+
+### Partidas completas
+
+Las tres semillas de abajo se eligieron en su día porque se podían ganar con
+los mapas antiguos; con el generador nuevo dan mapas distintos y ya no sirven
+para comparar. Con doce semillas nuevas (`AAAA0001` … `LLLL0012`), un intento
+por semilla y versión, el mismo bot:
+
+| | `main` | Esta versión |
+|---|---|---|
+| Superan el Acto I | 3 de 12 | 5 de 12 |
+| Llegan al final | 0 de 12 | 1 de 12 |
+| Medios globos perdidos en las salas del Acto I | 4,7 | 4,7 |
+
+Ajustes que hicieron falta para llegar ahí (en las primeras pasadas la versión
+nueva salía bastante más difícil): el fuego deja pasar los disparos, el Aro de
+Hula ya no atrapa las pelotas, las salas difíciles empiezan una sala más lejos,
+más curas entre actos y al limpiar salas, y los objetos de globos pesan más en
+las reservas.
+
 ## Resultados (12 de noviembre de 2026, tras el ajuste del Acto II)
 
 Formato: globos al empezar el acto · medios globos perdidos en salas · jefe (medios globos perdidos) · objetos al terminar · tiempo acumulado.

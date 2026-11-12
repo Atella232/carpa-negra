@@ -34,6 +34,18 @@ estas notas):
   la vuelta no choca con las paredes. El carrusel es un modificador de disparo
   (`shot.cross`); el tambor, una bandera (`redoble`).
 
+- **Fase 8 (equilibrio)**: con todo lo anterior, el bot moría mucho antes en
+  partidas completas. Se corrigió así:
+  - El **Aro de Hula** atrapaba las pelotas alrededor del payaso (con él no se
+    podía dañar a nada que guardara la distancia). Ahora cada pelota da una
+    vuelta y sale hacia donde apuntabas.
+  - Las salas de **dificultad 3** empiezan a 5 salas del inicio (antes, a 4):
+    la sala de más de cada acto era casi siempre difícil.
+  - **Curas**: entre actos se recuperan 2 globos (3 si no perdiste rojos), más
+    medios globos y globos al limpiar salas, el Carromato del Curandero sale más
+    (peso 3) y los tres objetos de globos pesan 1,5 en las reservas.
+  - Los objetos nuevos no entran en la reserva del jefe (diluían sus premios).
+
 Resultados del bot antes y después: `docs/semillas-de-referencia.md`.
 
 ## Contexto

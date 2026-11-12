@@ -54,15 +54,18 @@ describe('cuatro actos', () => {
   });
 
   it('la curación entre actos premia no perder rojos', () => {
+    // Tres globos (6 medios) sin perder rojos; dos (4) si se perdieron.
     const a = createRun('CURA');
+    a.player.maxHp = 10;
     a.player.hp = 2;
     advanceAct(a);
-    expect(a.player.hp).toBe(6);
+    expect(a.player.hp).toBe(8);
     const b = createRun('CURA');
+    b.player.maxHp = 10;
     b.player.hp = 2;
     b.player.redDamageTaken = true;
     advanceAct(b);
-    expect(b.player.hp).toBe(4);
+    expect(b.player.hp).toBe(6);
   });
 
   it('ninguna reserva se queda vacía en una partida completa', () => {
