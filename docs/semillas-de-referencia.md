@@ -51,10 +51,12 @@ nivel 3 (de 6,3 a 0,6) viene de que el fuego ya no para los disparos.
 
 ### Partidas completas
 
-Las tres semillas de abajo se eligieron en su día porque se podían ganar con
-los mapas antiguos; con el generador nuevo dan mapas distintos y ya no sirven
-para comparar. Con doce semillas nuevas (`AAAA0001` … `LLLL0012`), un intento
-por semilla y versión, el mismo bot:
+Con el generador nuevo, las tres semillas de abajo dan mapas distintos y ya no
+sirven para comparar. Además salían favorables: con `main`, el bot llegaba al
+final en 8 de 18 intentos (seis semillas, tres intentos cada una) con estas y
+otras tres semillas antiguas, y en 0 de 12 con doce semillas nuevas. Con esas
+doce semillas nuevas (`AAAA0001` … `LLLL0012`), un intento por semilla y
+versión, el mismo bot:
 
 | | `main` | Esta versión |
 |---|---|---|
