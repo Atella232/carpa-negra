@@ -433,6 +433,7 @@ export class Titi extends Enemy {
       for (let i = 0; i < this.loot * 2; i++) this.sc.spawnPickup('boleto', this.x, this.y, { burst: true });
       const st = this.sc.run.stats;
       st.ladrones = (st.ladrones ?? 0) + 1;
+      this.sc.meta('ladron');
       this.sc.floatText('¡Tu botín, y más!', 0xf2c14e);
     }
     super.die();

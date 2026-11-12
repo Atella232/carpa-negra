@@ -234,6 +234,8 @@ export class HudScene extends Phaser.Scene {
     const gs = this.gs;
     const run = gs.run;
     const reveal = gs.effects.hasFlag('revealMap') || !!run.mapRevealed;
+    // Mapa del Tesoro: las salas secretas se ven aunque no se hayan descubierto.
+    const treasure = gs.effects.hasFlag('mapaTesoro');
     const known = new Set<RoomState>();
     for (const r of run.rooms.values()) {
       if (r.visited) {
@@ -243,7 +245,7 @@ export class HudScene extends Phaser.Scene {
           const n = run.rooms.get(roomKey(r.x + DIR_VEC[d].x, r.y + DIR_VEC[d].y));
           if (n) known.add(n);
         }
-      } else if (reveal && r.type !== 'secreta') known.add(r);
+      } else if ((reveal && r.type !== 'secreta') || (treasure && r.type === 'secreta')) known.add(r);
     }
     return known;
   }
@@ -254,7 +256,7 @@ export class HudScene extends Phaser.Scene {
     const color = isCur ? 0xefe6d8 : r.visited ? (r.cleared ? 0x7a4a8c : 0x5c3c70) : 0x2e1f38;
     g.fillStyle(color, 1).fillRect(x, y, w - 1, h - 1);
     const glyph = ROOM_GLYPH[r.type];
-    if (glyph && (r.visited || r.type !== 'secreta' || gs.effects.hasFlag('revealMap'))) {
+    if (glyph && (r.visited || r.type !== 'secreta' || gs.effects.hasFlag('revealMap') || gs.effects.hasFlag('mapaTesoro'))) {
       const [rows, col] = glyph;
       const gx = x + Math.floor((w - 1 - 3) / 2),
         gy = y + Math.floor((h - 1 - 3) / 2);

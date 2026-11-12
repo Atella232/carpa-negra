@@ -3,8 +3,8 @@
 import type { PoolName } from '../core/itempool';
 import type { StatSource } from '../core/stats';
 
-export type ActiveEffect = 'tarta' | 'sombrero' | 'latigo' | 'canon' | 'bocina' | 'jaula' | 'loco' | 'confeti';
-export type FamiliarKind = 'globoPerro' | 'monoJuguete' | 'pulgaFiel' | 'leoncito' | 'doble' | 'sombra' | 'foco';
+export type ActiveEffect = 'tarta' | 'sombrero' | 'latigo' | 'canon' | 'bocina' | 'jaula' | 'loco' | 'confeti' | 'cubo';
+export type FamiliarKind = 'globoPerro' | 'monoJuguete' | 'pulgaFiel' | 'leoncito' | 'doble' | 'sombra' | 'foco' | 'foquita';
 
 export interface ItemFlags {
   magnet?: boolean; // atrae boletos y recogibles
@@ -24,6 +24,8 @@ export interface ItemFlags {
   tragedia?: boolean; // +0,6 de daño por globo vacío
   plumaSangre?: boolean; // +0,1 de daño por sala limpia sin daño
   aplausoEterno?: boolean; // el aplausómetro solo pierde la mitad
+  redoble?: boolean; // cada quinta ráfaga, enorme
+  mapaTesoro?: boolean; // el mapa enseña las salas secretas
 }
 
 export interface ItemDef extends StatSource {
@@ -299,6 +301,83 @@ export const ITEMS: ItemDef[] = [
     id: 'canonConfeti', name: 'Cañón de Confeti', desc: 'Empuja, aturde y borra balas', kind: 'activo',
     pools: [...ALL, 'puesto'], active: { charges: 3, effect: 'confeti' },
   },
+  // --- Variedad: cambian el disparo ---
+  {
+    id: 'bumeranPayaso', name: 'Bumerán de Payaso', desc: 'Las pelotas vuelven y golpean otra vez', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { boomerang: true },
+    lore: 'Lo tiras y vuelve. Como los acreedores.',
+  },
+  {
+    id: 'serpentinas', name: 'Serpentinas', desc: 'Vuelan en zigzag', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], shot: { wiggle: true }, stats: { damage: 0.5 },
+    lore: 'De la última fiesta. Nadie recuerda qué se celebraba.',
+  },
+  {
+    id: 'florSolapa', name: 'Flor de Solapa', desc: 'Chorro rápido que moja, frena y apaga el fuego', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], shot: { water: true }, stats: { tearsMult: 2, damageMult: 0.55, shotSpeed: 1 },
+    tags: ['payaso'], lore: 'Acércate a olerla. Venga. No pasa nada.',
+  },
+  {
+    id: 'chicle', name: 'Chicle', desc: 'Las fieras golpeadas van lentas', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], shot: { sticky: true },
+    lore: 'Sabor a fresa. Al principio.',
+  },
+  {
+    id: 'platosChinos', name: 'Platos Chinos', desc: 'Tus pelotas rompen las balas enemigas', kind: 'pasivo',
+    pools: [...ALL, 'jefe'], shot: { antiBala: true },
+    lore: 'Doce platos girando. El truco es no mirar ninguno.',
+  },
+  {
+    id: 'trabuco', name: 'Trabuco de Feria', desc: 'Cinco perdigones cortos', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { extraShots: 4, spread: 7, jitter: 0.35 }, stats: { tearsMult: 0.42, damageMult: 0.6, range: -2.5 },
+    lore: 'De la caseta de tiro. Las escopetas de verdad estaban trucadas.',
+  },
+  {
+    id: 'dobleCanon', name: 'Doble Cañón', desc: 'Dos pelotas en paralelo', kind: 'pasivo',
+    pools: [...ALL, 'jefe'], shot: { parallel: true }, stats: { tearsMult: 0.85 }, tags: ['malabarista'],
+  },
+  {
+    id: 'bolos', name: 'Bolos', desc: 'Las pelotas se quedan en el suelo', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], shot: { linger: true }, tags: ['malabarista'],
+    lore: 'Pleno. Y otro pleno. Y otro.',
+  },
+  {
+    id: 'bolaEspejos', name: 'Bola de Espejos', desc: 'Al chocar con una pared se parten en tres', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { prism: true },
+    lore: 'Colgaba del techo de la Casa de los Espejos. Ahora cuelga de ti.',
+  },
+  {
+    id: 'aroHula', name: 'Aro de Hula', desc: 'Las pelotas giran a tu alrededor', kind: 'pasivo',
+    pools: [...ALL, 'secreta'], shot: { orbit: true }, stats: { tearsMult: 0.8 }, tags: ['malabarista'],
+  },
+  {
+    id: 'carrusel', name: 'Carrusel', desc: 'Cada cuarta ráfaga sale hacia todos lados', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], shot: { cross: true },
+    lore: 'Da vueltas. Siempre da vueltas. Nunca llega a ningún sitio.',
+  },
+  {
+    id: 'mazoFeria', name: 'Mazo de Feria', desc: 'Golpear seguido a la misma fiera duele más', kind: 'pasivo',
+    pools: [...ALL, 'jefe'], shot: { ramp: true },
+    lore: 'Dale fuerte y suena la campana. Dale más fuerte y suena otra cosa.',
+  },
+  {
+    id: 'tamborRedoble', name: 'Tambor de Redoble', desc: 'Cada quinta ráfaga es enorme', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], flags: { redoble: true },
+  },
+  {
+    id: 'cuboAgua', name: 'Cubo de Agua', desc: 'Apaga el fuego y frena a las fieras', kind: 'activo',
+    pools: [...ALL, 'puesto'], active: { charges: 2, effect: 'cubo' },
+    lore: 'El número de los payasos bomberos. Siempre acaba igual.',
+  },
+  {
+    id: 'focaAmaestrada', name: 'Foca Amaestrada', desc: 'Devuelve balas de un cabezazo', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], familiar: 'foquita',
+  },
+  {
+    id: 'mapaTesoro', name: 'Mapa del Tesoro', desc: 'Ves las salas secretas', kind: 'pasivo',
+    pools: [...ALL, 'puesto'], flags: { mapaTesoro: true },
+    lore: 'La X marca el sitio. Hay muchas X.',
+  },
   // --- El Contrato ---
   {
     id: 'contratoFirmado', name: 'Contrato Firmado', desc: 'Mucho más daño', kind: 'pasivo',
@@ -348,6 +427,8 @@ const PRICES: Record<string, number> = {
   // Imprescindibles
   tripleMalabar: 20, bolaCanon: 20, cuchillosLanzador: 20, colmilloCobra: 18, esquirlaEspejo: 20, sierraMago: 20,
   tomatePodrido: 20, zancos: 18, redSeguridad: 20, varitaTrucada: 18, malabaresLlamas: 18, palomitas: 18,
+  bumeranPayaso: 18, florSolapa: 18, platosChinos: 20, trabuco: 20, dobleCanon: 20, bolaEspejos: 18, aroHula: 18,
+  mazoFeria: 18, cuboAgua: 12, mapaTesoro: 10,
   // Flojos o de nicho
   espejoDeformante: 8, serrin: 8, bolaCristal: 10, imanFeria: 10, entradaDorada: 10, bombaHumo: 12,
   chisteraDobleFondo: 12, laClaque: 12, ramoRosas: 12, pajaritaGiratoria: 12, cuerdaFloja: 12,

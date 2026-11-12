@@ -96,7 +96,7 @@ describe('objetos', () => {
       expect(ITEM_ICONS[`obj_${it.id}`], it.id).toBeTruthy();
       if (it.kind === 'activo') expect(it.active).toBeTruthy();
     }
-    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(55);
+    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(71);
     expect(ITEMS.filter((i) => i.pools.includes('contrato')).length).toBe(9);
   });
 });

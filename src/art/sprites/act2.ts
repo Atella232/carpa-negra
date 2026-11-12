@@ -251,6 +251,19 @@ export const ACT2_SPRITES: Record<string, SpriteDef> = {
     for (let x = 1; x < 13; x += 3) p.rect(x, 4, 1, 8, 'x');
     p.rect(5, 0, 4, 2, 'y');
   }),
+  // Foca Amaestrada (familiar): 0 quieta, 1 dando el cabezazo.
+  foquita: {
+    w: 14,
+    h: 12,
+    frames: 2,
+    paint: (p, f) => {
+      p.ellipse(7, 8, 5.5, 3, 's').ellipse(7, 9, 4, 1.5, 'g');
+      const hy = f === 1 ? 2 : 4;
+      p.disc(11, hy, 2.5, 's').px(12, hy - 1, 'k').px(13, hy, 'k');
+      p.line(1, 9, 0, 11, 's');
+      p.disc(11, hy - 4, 1.5, 'R').px(10, hy - 5, 'W');
+    },
+  },
   // --- Nuevas del Acto II ---
   // Foca equilibrista: 0 deslizándose, 1 con la pelota en alto (aviso).
   foca: {

@@ -40,8 +40,50 @@ function familiarVolley(sc: GameScene, x: number, y: number, dir: { x: number; y
   const st = sc.stats;
   for (const v of buildVolley(st, dir, 1)) {
     sc.spawnShot(x, y, Math.cos(v.angle) * st.shotSpeed, Math.sin(v.angle) * st.shotSpeed, true, {
-      ...v.opts, damage: v.opts.damage * mult, scale: v.opts.scale * 0.8,
+      // Las de los familiares no giran alrededor del payaso.
+      ...v.opts, damage: v.opts.damage * mult, scale: v.opts.scale * 0.8, orbit: false,
     });
+  }
+}
+
+/**
+ * Foca Amaestrada: va detrás del payaso; cada 3 s devuelve de un cabezazo la
+ * bala enemiga que se le acerque, convertida en una pelota tuya hacia la fiera
+ * más cercana.
+ */
+export class Foquita extends Familiar {
+  cd = 0;
+  trail = new TimeTrail(0.5);
+  constructor(scene: GameScene) {
+    super(scene, 'foquita');
+  }
+  update(dt: number): void {
+    this.t += dt;
+    this.cd = Math.max(0, this.cd - dt);
+    const p = this.scene.player;
+    this.trail.push(p.x, p.y, dt);
+    const at = this.trail.at(0.35)!;
+    this.sprite.setPosition(at.x - 8, at.y + 2);
+    this.sprite.setFrame(this.cd > 2.6 ? 1 : 0);
+    this.sprite.setDepth(DEPTH.world + this.sprite.y);
+    if (this.cd > 0) return;
+    const s = this.scene.enemyShotsNear(p.x, p.y - 6, 22)[0];
+    if (!s) return;
+    this.cd = 3;
+    const x = s.x,
+      y = s.y;
+    s.pop();
+    const e = this.scene.nearestEnemy(x, y, 200);
+    const a = e ? Math.atan2(e.y - y, e.x - x) : Math.atan2(y - p.y, x - p.x);
+    const st = this.scene.stats;
+    this.scene.spawnShot(x, y, Math.cos(a) * st.shotSpeed, Math.sin(a) * st.shotSpeed, true, {
+      damage: st.damage * 1.5, range: 200, texture: 'pelota_foca',
+    });
+    this.scene.snd('rebote');
+  }
+  reset(): void {
+    super.reset();
+    this.trail.clear();
   }
 }
 
@@ -306,5 +348,7 @@ export function createFamiliar(scene: GameScene, kind: FamiliarKind): Familiar {
       return new PulgaFiel(scene);
     case 'leoncito':
       return new Leoncito(scene);
+    case 'foquita':
+      return new Foquita(scene);
   }
 }

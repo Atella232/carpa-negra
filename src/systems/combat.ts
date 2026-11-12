@@ -39,9 +39,21 @@ export function setupColliders(this: GameScene): void {
   add.collider(g.enemies, g.pedestals, undefined, ground);
   add.collider(g.enemies, g.enemies, undefined, (a, b) => ground(a) && ground(b));
 
-  add.collider(g.pShots, g.walls, (s) => this.shotHitWall(s as Shot));
-  add.collider(g.pShots, g.doors, (s) => this.shotHitWall(s as Shot));
-  add.collider(g.pShots, g.solids, (s, o) => this.shotHitSolid(s as Shot, o as Obstacle), (s) => !(s as Shot).opts.spectral);
+  // Las pelotas del Aro de Hula giran alrededor del payaso y las del bumerán, a la
+  // vuelta, regresan a la mano: no chocan con nada del escenario.
+  const free = (s: unknown) => !(s as Shot).opts.orbit && !((s as Shot).friendly && (s as Shot).returning);
+  add.collider(g.pShots, g.walls, (s) => this.shotHitWall(s as Shot), free);
+  add.collider(g.pShots, g.doors, (s) => this.shotHitWall(s as Shot), free);
+  add.collider(g.pShots, g.solids, (s, o) => this.shotHitSolid(s as Shot, o as Obstacle), (s) => !(s as Shot).opts.spectral && free(s));
+  // Platos Chinos: tus pelotas rompen las balas enemigas.
+  add.overlap(g.pShots, g.eShots, (s, e) => {
+    const mine = s as Shot,
+      theirs = e as Shot;
+    if (mine.dead || theirs.dead) return;
+    theirs.pop('aire');
+    this.fx.sparks(theirs.x, theirs.y, 0xe4e2ec, 3);
+    if (--mine.antiLeft <= 0) mine.pop('aire');
+  }, (s) => (s as Shot).opts.antiBala);
   add.overlap(g.pShots, g.enemies, (s, e) => this.shotHitEnemy(s as Shot, e as Enemy));
 
   // Con las paredes-espejo (Tu Reflejo, fase 2), la bala rebota una vez antes de chocar.
@@ -94,6 +106,23 @@ export function setupColliders(this: GameScene): void {
 
 export function shotHitWall(this: GameScene, s: Shot): void {
   if (s.dead) return;
+  // Bola de Espejos: al chocar (sin rebotes que gastar) se parte en tres.
+  if (s.friendly && s.opts.prism && !s.opts.isFragment && s.bouncesLeft <= 0) {
+    const v = { ...s.lastVel };
+    if (s.x < 26 || s.x > ROOM_W - 26) v.x = -v.x;
+    if (s.y < 26 || s.y > ROOM_H - 26) v.y = -v.y;
+    const a = Math.atan2(v.y, v.x),
+      sp = Math.hypot(v.x, v.y);
+    for (const off of [0, -0.44, 0.44]) {
+      this.spawnShot(s.x, s.y, Math.cos(a + off) * sp, Math.sin(a + off) * sp, true, {
+        ...s.opts, damage: s.opts.damage * 0.5, range: s.opts.range * 0.6, scale: s.opts.scale * 0.7,
+        isFragment: true, prism: false, bounce: 0, linger: false,
+      });
+    }
+    this.snd('espejo');
+    s.pop('pared');
+    return;
+  }
 
   if (s.bouncesLeft > 0) {
     s.bouncesLeft--;
@@ -134,6 +163,8 @@ export function shotHitTall(this: GameScene, s: Shot, al: Phaser.Physics.Arcade.
 
 export function shotHitSolid(this: GameScene, s: Shot, o: Obstacle): void {
   if (s.dead) return;
+  // El agua apaga un brasero de un golpe.
+  if (s.opts.water && o.kind === 'brasero' && !o.extinguished) o.hits = Math.max(o.hits, BRASERO_HITS - 1);
   if (o.breakableByShots) this.hitObstacle(o);
   // La paja arde con los malabares en llamas.
   else if (o.kind === 'paja' && s.opts.burn) this.destroyObstacle(o, true);
@@ -154,7 +185,17 @@ export function shotHitEnemy(this: GameScene, s: Shot, e: Enemy): void {
     return;
   }
   const lit = e.litT > 0 ? 1.25 : 1;
-  e.damage(s.opts.damage * lit, { x: s.x - s.body.velocity.x, y: s.y - s.body.velocity.y }, s.opts.knockback);
+  // Mazo de Feria: cada golpe seguido a la misma fiera, un 15 % más (hasta +90 %).
+  let ramp = 1;
+  if (s.opts.ramp) {
+    const r = this.ramp;
+    r.n = r.target === e ? Math.min(6, r.n + 1) : 0;
+    r.target = e;
+    ramp = 1 + 0.15 * r.n;
+  }
+  e.damage(s.opts.damage * lit * ramp, { x: s.x - s.body.velocity.x, y: s.y - s.body.velocity.y }, s.opts.knockback);
+  // Chicle y agua: quien recibe el golpe va más lento un rato.
+  if ((s.opts.sticky || s.opts.water) && !e.dead) e.slowT = Math.max(e.slowT, e.isBoss ? 0.5 : 1.5);
   if (s.opts.crit) this.fx.sparks(s.x, s.y, 0xfff2a8, 6);
   // Esquirla de Espejo: el golpe salta a otra criatura cercana.
   if (s.opts.chain && !s.opts.isChain) {
@@ -185,7 +226,7 @@ export function hitObstacle(this: GameScene, o: Obstacle): void {
     braseroLook(o);
     if (o.extinguished) {
       this.fx.dust(o.x, o.y - 6, 4);
-      this.run.stats.fuegos = (this.run.stats.fuegos ?? 0) + 1;
+      this.fuegoApagado();
       if (this.rngLoot.chance(0.25)) this.dropRandom(o.x, o.y + 10);
     }
   }
@@ -319,7 +360,7 @@ export function explode(this: GameScene, x: number, y: number, o: { damage: numb
         ob.hits = BRASERO_HITS;
         this.room.damaged[ob.tile] = ob.hits;
         braseroLook(ob);
-        this.run.stats.fuegos = (this.run.stats.fuegos ?? 0) + 1;
+        this.fuegoApagado();
       }
       continue;
     }

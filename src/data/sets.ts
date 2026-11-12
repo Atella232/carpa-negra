@@ -24,7 +24,7 @@ export const SETS: SetDef[] = [
   },
   {
     id: 'malabarista', name: 'Traje de Malabarista', desc: 'Una pelota más',
-    items: ['tripleMalabar', 'pelotasGoma', 'bolaEquilibrista', 'malabaresLlamas', 'bolaCanon'],
+    items: ['tripleMalabar', 'pelotasGoma', 'bolaEquilibrista', 'malabaresLlamas', 'bolaCanon', 'aroHula', 'bolos', 'dobleCanon'],
     need: 3, source: { shot: { extraShots: 1, spread: 10 } }, costume: 'disfraz_malabarista',
   },
   {
@@ -34,7 +34,7 @@ export const SETS: SetDef[] = [
   },
   {
     id: 'payaso', name: 'Payaso Completo', desc: '+1 globo y el público te adora',
-    items: ['narizRoja', 'zapatones', 'guantesBlancos', 'pajaritaGiratoria', 'maquillajeCorrido', 'barbaPostiza'],
+    items: ['narizRoja', 'zapatones', 'guantesBlancos', 'pajaritaGiratoria', 'maquillajeCorrido', 'barbaPostiza', 'florSolapa'],
     need: 4, source: {}, flag: 'claque', maxHp: 2, costume: 'disfraz_payaso',
   },
 ];

@@ -39,6 +39,15 @@ export interface ShotOpts {
   isChain?: boolean;
   /** Segundos de controles invertidos al payaso en vez de daño (orbe del hipnotizador). */
   daze?: number;
+  // --- Objetos de la variedad (solo pelotas del payaso) ---
+  wiggle?: boolean;
+  water?: boolean;
+  sticky?: boolean;
+  antiBala?: boolean;
+  linger?: boolean;
+  prism?: boolean;
+  orbit?: boolean;
+  ramp?: boolean;
 }
 
 export class Shot extends Phaser.Physics.Arcade.Sprite {
@@ -58,8 +67,21 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
   private trailT = 0;
   private homeX = 0;
   private homeY = 0;
-  private returning = false;
+  /** Bumerán: ya vuelve hacia la mano (en la vuelta no choca con las paredes). */
+  returning = false;
   private didSplit = false;
+  /** Velocidad antes del último choque (para la Bola de Espejos). */
+  lastVel = { x: 0, y: 0 };
+  /** Zigzag de las serpentinas que se sumó el fotograma anterior. */
+  private wig = { x: 0, y: 0 };
+  /** Bolos: la pelota ya está quieta en el suelo. */
+  lingering = false;
+  private lingerT = 0;
+  /** Aro de Hula: ángulo y reloj de la órbita. */
+  private orbitA = 0;
+  private hitClearT = 0;
+  /** Platos Chinos: balas que puede romper aún. */
+  antiLeft = 1;
 
   constructor(scene: GameScene, x: number, y: number, vx: number, vy: number, friendly: boolean, opts: ShotOpts) {
     super(scene, x, y, opts.texture ?? (friendly ? 'pelota' : 'bala'));
@@ -68,6 +90,7 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
       scale: 1, pierce: false, bounce: 0, burn: false, fragment: false, spectral: false,
       homing: false, isFragment: false, knockback: 70, texture: this.texture.key, rotate: false, burst: 0, poison: false, grow: false,
       halves: opts.damage, boomerang: false, chain: false, split: false, explosive: false, crit: false, isChain: false, daze: 0,
+      wiggle: false, water: false, sticky: false, antiBala: false, linger: false, prism: false, orbit: false, ramp: false,
       ...opts,
     };
     scene.add.existing(this);
@@ -90,6 +113,11 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     this.baseDamage = this.opts.damage;
     this.homeX = x;
     this.homeY = y;
+    this.lastVel = { x: vx, y: vy };
+    this.orbitA = Math.atan2(vy, vx);
+    this.antiLeft = this.opts.pierce ? 3 : 1;
+    if (this.opts.orbit) this.maxLife *= 2.2;
+    if (this.opts.water && friendly) this.setTint(0x9fd8ff);
     if (this.opts.crit) this.setTint(0xfff2a8);
     // Alto contraste: balas enemigas más grandes y de un color que no hay en el suelo.
     if (!friendly && settings().contrast) this.setScale(this.opts.scale * 1.35).setTint(0xff4dff);
@@ -105,6 +133,33 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     const t = this.life / this.maxLife;
     const scene = this.scene as GameScene;
 
+    // Aro de Hula: gira alrededor del payaso, abriéndose poco a poco.
+    if (this.opts.orbit && this.friendly) {
+      const p = scene.player;
+      this.orbitA += dt * 5;
+      const r = 18 + 16 * Math.min(1, t);
+      const x = p.x + Math.cos(this.orbitA) * r,
+        y = p.y - 8 + Math.sin(this.orbitA) * r;
+      this.body.reset(x, y);
+      this.shadow.setPosition(x, y + 8);
+      this.hitClearT -= dt;
+      if (this.hitClearT <= 0) {
+        this.hitClearT = 0.4;
+        this.hit.clear();
+      }
+      if (this.life >= this.maxLife) this.pop();
+      return;
+    }
+    // Bolos: quieta en el suelo hasta que alguien la pise (o pasen 3 s).
+    if (this.lingering) {
+      this.lingerT -= dt;
+      this.body.setVelocity(0, 0);
+      if (this.lingerT < 0.5) this.setAlpha(Math.max(0.2, this.lingerT / 0.5));
+      if (this.lingerT <= 0) this.pop();
+      return;
+    }
+    this.lastVel = { x: this.body.velocity.x, y: this.body.velocity.y };
+
     if (this.opts.homing) {
       // Los del payaso buscan criaturas; los enemigos, al payaso (y giran más despacio).
       const target = this.friendly ? scene.nearestEnemy(this.x, this.y, 90) : scene.player;
@@ -112,11 +167,18 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     }
     // Bumerán: a mitad de camino vuelve a casa.
     if (this.opts.boomerang) {
-      if (!this.returning && t >= 0.5) this.returning = true;
+      if (!this.returning && t >= 0.5) {
+        this.returning = true;
+        // A la vuelta puede volver a dar a las mismas fieras.
+        if (this.friendly) this.hit.clear();
+      }
       if (this.returning) {
-        this.steer(this.homeX, this.homeY, 7, dt);
+        // Las cartas enemigas vuelven a donde salieron; tus pelotas, a tu mano.
+        const hx = this.friendly ? scene.player.x : this.homeX,
+          hy = this.friendly ? scene.player.y - 8 : this.homeY;
+        this.steer(hx, hy, this.friendly ? 14 : 7, dt);
         this.setRotation(this.rotation + dt * 18);
-        if (Phaser.Math.Distance.Between(this.x, this.y, this.homeX, this.homeY) < 8) return this.pop();
+        if (Phaser.Math.Distance.Between(this.x, this.y, hx, hy) < (this.friendly ? 10 : 8)) return this.pop();
       } else this.setRotation(this.rotation + dt * 18);
     }
     // Sierra del Mago: se parte en dos a mitad del alcance.
@@ -136,8 +198,18 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
       this.setScale(this.opts.scale * (1 + k * 1.1));
       this.opts.damage = this.baseDamage * (1 + k * 1.2);
     }
+    // Serpentinas: un vaivén ancho perpendicular a la marcha (sobrevive a los rebotes).
+    if (this.opts.wiggle && this.friendly && !this.opts.homing && t < 0.78) {
+      const v = this.body.velocity;
+      const bx = v.x - this.wig.x,
+        by = v.y - this.wig.y;
+      const len = Math.hypot(bx, by) || 1;
+      const k = Math.cos(this.life * 14) * 90;
+      this.wig = { x: (-by / len) * k, y: (bx / len) * k };
+      this.body.setVelocity(bx + this.wig.x, by + this.wig.y);
+    }
     // Al final del recorrido, la pelota cae.
-    if (t > 0.78 && !this.opts.rotate && !this.opts.boomerang) this.body.velocity.y += 260 * dt;
+    if (t > 0.78 && !this.opts.rotate && !this.opts.boomerang && !this.opts.linger) this.body.velocity.y += 260 * dt;
     if (this.opts.rotate) this.setRotation(Math.atan2(this.body.velocity.y, this.body.velocity.x));
     const fall = t > 0.78 ? (t - 0.78) * 30 : 0;
     this.shadow.setPosition(this.x, this.y + 8 - fall);
@@ -149,7 +221,25 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     }
     if (!this.friendly && this.texture.frameTotal > 2) this.setFrame(Math.floor(this.life * 8) % 2);
     const maxLife = this.opts.boomerang ? this.maxLife * 1.6 : this.maxLife;
-    if (this.life >= maxLife) this.pop();
+    if (this.life >= maxLife) {
+      if (this.opts.linger && this.friendly && !this.opts.isFragment) this.startLinger(scene);
+      else this.pop();
+    }
+  }
+
+  /** Bolos: se queda en el suelo 3 s; pega un poco menos y desaparece al primer golpe. */
+  private startLinger(scene: GameScene): void {
+    this.lingering = true;
+    this.lingerT = 3;
+    this.opts.damage *= 0.75;
+    this.opts.pierce = false;
+    this.body.setVelocity(0, 0);
+    this.setY(this.y + 6);
+    this.shadow.setPosition(this.x, this.y + 3);
+    // Como mucho 12 en la sala: se va la más antigua.
+    scene.bolos = scene.bolos.filter((b) => b.active && !b.dead);
+    scene.bolos.push(this);
+    if (scene.bolos.length > 12) scene.bolos.shift()?.pop();
   }
 
   /** Gira poco a poco hacia (x, y) a `turn` radianes por segundo. */

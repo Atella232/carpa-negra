@@ -185,13 +185,32 @@ export class Player {
     // Traje de Mago: una de cada cinco ráfagas busca sola.
     this.volleys++;
     const magic = sc.effects.hasFlag('palomas') && this.volleys % 5 === 0;
-    for (const v of buildVolley(st, dir, sc.rngCombat.next(), charge)) {
-      if (magic) v.opts.homing = true;
-      // El disparo hereda parte de la inercia del payaso.
-      const vx = Math.cos(v.angle) * st.shotSpeed + this.vel.x * 0.35;
-      const vy = Math.sin(v.angle) * st.shotSpeed + this.vel.y * 0.35;
-      sc.spawnShot(originX, originY, vx, vy, true, v.opts);
+    // Tambor de Redoble: una de cada cinco ráfagas, enorme.
+    const drum = sc.effects.hasFlag('redoble') && this.volleys % 5 === 0;
+    // Carrusel: una de cada cuatro sale también en las otras tres direcciones.
+    const dirs = [dir];
+    if (sh.cross && this.volleys % 4 === 0) {
+      dirs.push({ x: -dir.x, y: -dir.y }, { x: dir.y, y: -dir.x }, { x: -dir.y, y: dir.x });
     }
+    const rand = () => sc.rngCombat.next();
+    for (const d of dirs) {
+      for (const v of buildVolley(st, d, sc.rngCombat.next(), charge, rand)) {
+        if (magic) v.opts.homing = true;
+        if (drum) {
+          v.opts.damage *= 2.5;
+          v.opts.scale *= 1.5;
+        }
+        // El disparo hereda parte de la inercia del payaso.
+        const sp = st.shotSpeed * v.speedMult;
+        const vx = Math.cos(v.angle) * sp + this.vel.x * 0.35;
+        const vy = Math.sin(v.angle) * sp + this.vel.y * 0.35;
+        // Doble Cañón: las dos pelotas salen separadas en perpendicular.
+        const px = -Math.sin(v.angle) * v.offset,
+          py = Math.cos(v.angle) * v.offset;
+        sc.spawnShot(originX + px, originY + py, vx, vy, true, v.opts);
+      }
+    }
+    if (drum) sc.snd('bombo');
     this.shootAnim = 0.12;
     // Fogonazo en la mano.
     sc.fx.sparks(originX + dir.x * 3, originY + dir.y * 3, sh.burn ? 0xf2c14e : 0x7fd1b9, 2 + Math.round(charge * 6));

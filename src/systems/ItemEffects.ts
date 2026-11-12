@@ -7,6 +7,7 @@ import { GOLOSINA_EFFECTS, GolosinaEffect } from '../data/golosinas';
 import { actDef } from '../data/acts';
 import { Paloma } from '../entities/familiars';
 import { DEPTH } from '../config';
+import { Obstacle, BRASERO_HITS, braseroLook } from '../entities/props';
 import { buildVolley } from '../core/volley';
 import { setBonuses } from '../data/sets';
 import { PickupKind } from '../core/run';
@@ -166,6 +167,21 @@ export class ItemEffects {
         }
         sc.snd(n ? 'carta' : 'error');
         if (n) sc.banner('¡El Loco!', 'Los objetos cambian de sitio');
+        break;
+      }
+      case 'cubo': {
+        // Cubo de Agua: apaga todo el fuego de la sala y frena a las fieras.
+        sc.snd('tarta');
+        sc.fx.flash(120, 0x9fd8ff, 0.3);
+        for (const h of [...sc.hazards]) h.douse(99);
+        for (const o of sc.g.solids.getChildren() as Obstacle[]) {
+          if (o.kind !== 'brasero' || o.extinguished) continue;
+          o.hits = BRASERO_HITS;
+          sc.room.damaged[o.tile] = o.hits;
+          braseroLook(o);
+          sc.fuegoApagado();
+        }
+        for (const e of sc.targets()) e.slowT = Math.max(e.slowT, e.isBoss ? 1 : 3);
         break;
       }
       case 'confeti': {

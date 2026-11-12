@@ -35,6 +35,9 @@ export const CARTELES: Cartel[] = [
   { id: 'espejos_rotos', name: 'Siete años', desc: 'Rompe diez espejos', reward: 'Esquirla de Espejo' },
   { id: 'coleccionista', name: 'Coleccionista', desc: 'Ten 50 objetos en el álbum', reward: 'Sierra del Mago' },
   { id: 'diaria', name: 'Función del día', desc: 'Supera un acto en la función del día' },
+  { id: 'bombero', name: 'Bombero', desc: 'Apaga 25 fuegos', reward: 'Flor de Solapa' },
+  { id: 'trastienda', name: 'Doble fondo', desc: 'Entra en una trastienda', reward: 'Mapa del Tesoro' },
+  { id: 'ladron', name: 'Manos arriba', desc: 'Recupera el botín de 5 monos ladrones', reward: 'Trabuco de Feria' },
 ];
 
 /** Objetos que hay que desbloquear (id → cartel). */
@@ -54,6 +57,9 @@ export const ITEM_UNLOCKS: Record<string, string> = {
   laClaque: 'aplauso',
   esquirlaEspejo: 'espejos_rotos',
   sierraMago: 'coleccionista',
+  florSolapa: 'bombero',
+  mapaTesoro: 'trastienda',
+  trabuco: 'ladron',
 };
 
 /** Ids de objetos bloqueados con estos carteles. */
@@ -71,7 +77,10 @@ export type MetaEvent =
   | { k: 'golosina'; effect: string }
   | { k: 'traje'; id: string }
   | { k: 'ovacion'; count: number }
-  | { k: 'espejo' };
+  | { k: 'espejo' }
+  | { k: 'fuego' }
+  | { k: 'trastienda' }
+  | { k: 'ladron' };
 
 /** Aplica un suceso al guardado y devuelve los carteles nuevos. */
 export function recordEvent(s: SaveData, ev: MetaEvent): Cartel[] {
@@ -123,6 +132,17 @@ export function recordEvent(s: SaveData, ev: MetaEvent): Cartel[] {
     case 'espejo':
       s.counters.espejos = (s.counters.espejos ?? 0) + 1;
       if (s.counters.espejos >= 10) give('espejos_rotos');
+      break;
+    case 'fuego':
+      s.counters.fuegos = (s.counters.fuegos ?? 0) + 1;
+      if (s.counters.fuegos >= 25) give('bombero');
+      break;
+    case 'trastienda':
+      give('trastienda');
+      break;
+    case 'ladron':
+      s.counters.ladrones = (s.counters.ladrones ?? 0) + 1;
+      if (s.counters.ladrones >= 5) give('ladron');
       break;
   }
   // Los jefes que no tienen cartel propio no cuentan.

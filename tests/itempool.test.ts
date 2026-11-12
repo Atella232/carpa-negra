@@ -28,3 +28,21 @@ describe('ItemPools', () => {
     expect(run()).toEqual(run());
   });
 });
+
+describe('reservas con el catálogo ampliado', () => {
+  it('ninguna reserva se vacía al sortear los objetos de los cuatro actos', async () => {
+    const { newRun } = await import('../src/core/run');
+    for (let i = 0; i < 200; i++) {
+      const run = newRun(`POOL${i}`);
+      for (const n of [1, 2, 3, 4]) {
+        const it = run.preItems![n];
+        expect(it.camerino.length, `semilla ${i} acto ${n}`).toBe(1);
+        expect(it.jefe.length).toBe(1);
+        expect(it.puesto.length).toBe(2);
+        expect(it.camerino2?.length).toBe(1);
+        expect(it.clavos?.length).toBe(1);
+        expect(it.trastienda?.length).toBe(1);
+      }
+    }
+  });
+});

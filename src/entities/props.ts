@@ -296,7 +296,7 @@ export class Fire extends Phaser.GameObjects.Sprite {
       return false;
     }
     sc.fx.dust(this.x, this.y, 3);
-    sc.run.stats.fuegos = (sc.run.stats.fuegos ?? 0) + 1;
+    sc.fuegoApagado();
     this.destroy();
     return true;
   }

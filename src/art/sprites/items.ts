@@ -140,6 +140,85 @@ export const ITEM_ICONS: Record<string, SpriteDef> = {
     p.rect(4, 0, 5, 9, 'G').rect(4, 0, 5, 2, 'R').ellipse(6, 10, 5, 3, 'G').px(2, 11, 'g');
     p.px(10, 3, 'V').px(11, 1, 'V').px(12, 4, 'V');
   }),
+  // --- Variedad ---
+  obj_bumeranPayaso: icon((p) => {
+    p.line(2, 11, 6, 3, 'R').line(3, 11, 7, 3, 'R').line(6, 3, 11, 11, 'y').line(7, 3, 12, 11, 'y');
+    p.px(6, 3, 'W').px(2, 11, 'W').px(12, 11, 'W');
+  }),
+  obj_serpentinas: icon((p) => {
+    for (let x = 0; x < 13; x++) {
+      p.px(x, 4 + Math.round(Math.sin(x * 0.9) * 2), 'R');
+      p.px(x, 9 + Math.round(Math.cos(x * 0.9) * 2), 'y');
+    }
+    p.px(3, 1, 'B').px(9, 12, 'V').px(11, 2, 'm');
+  }),
+  obj_florSolapa: icon((p) => {
+    for (const [x, y] of [[6, 2], [9, 5], [6, 8], [3, 5]]) p.disc(x + 0.5, y + 0.5, 2, 'm');
+    p.disc(6.5, 5.5, 1.5, 'y').line(6, 8, 6, 13, 'v').px(7, 11, 'V');
+    p.px(11, 1, 'C').px(12, 0, 'C').px(12, 2, 'C');
+  }),
+  obj_chicle: icon((p) => {
+    p.disc(6.5, 6, 5, 'm').disc(5, 4.5, 1.5, 'W').ring(6.5, 6, 5, 'M');
+    p.line(4, 11, 3, 13, 'm').line(9, 11, 10, 13, 'm');
+  }),
+  obj_platosChinos: icon((p) => {
+    p.ellipse(4, 3, 3.5, 1.2, 'W').ellipse(10, 3, 3.5, 1.2, 'B').line(4, 4, 4, 12, 'N').line(10, 4, 10, 12, 'N');
+    p.ellipse(7, 8, 3.5, 1.2, 'R').line(7, 9, 7, 13, 'N');
+  }),
+  obj_trabuco: icon((p) => {
+    p.rect(1, 6, 9, 3, 'x').rect(9, 5, 4, 5, 'x').rect(9, 5, 4, 1, 'X');
+    p.rect(1, 8, 4, 4, 'n').rect(2, 12, 3, 1, 'n');
+    for (const [x, y] of [[13, 3], [12, 1], [13, 11], [12, 13]]) p.px(x, y, 'y');
+  }),
+  obj_dobleCanon: icon((p) => {
+    p.rect(1, 2, 10, 4, 's').rect(1, 8, 10, 4, 's').rect(1, 2, 10, 1, 'g').rect(1, 8, 10, 1, 'g');
+    p.disc(11.5, 4, 2, 'k').disc(11.5, 10, 2, 'k').rect(0, 5, 3, 4, 'N');
+  }),
+  obj_bolos: icon((p) => {
+    for (const x of [3, 7, 11]) {
+      p.ellipse(x, 8, 2, 4, 'W').ellipse(x, 3.5, 1.3, 1.6, 'W').rect(x - 1, 6, 3, 1, 'R');
+    }
+    p.disc(2, 12, 1.5, 'k');
+  }),
+  obj_bolaEspejos: icon((p) => {
+    p.disc(6.5, 7, 5.5, 'G');
+    for (let y = 2; y < 13; y += 2) for (let x = 1 + (y % 4 === 0 ? 1 : 0); x < 13; x += 2) p.px(x, y, 'X');
+    p.px(4, 4, 'W').px(5, 3, 'W').line(6, 0, 6, 1, 'x');
+  }),
+  obj_aroHula: icon((p) => {
+    p.ellipse(6.5, 7, 6, 3.5, 'V').ellipse(6.5, 7, 4.5, 2.2, 'k').clear(3, 6, 8, 2);
+    p.px(1, 7, 'y').px(12, 7, 'y').px(6, 3, 'm').px(7, 11, 'm');
+  }),
+  obj_carrusel: icon((p) => {
+    p.rect(1, 3, 12, 2, 'R').line(6, 0, 6, 3, 'y').px(6, 0, 'Y');
+    p.stripesH(1, 5, 12, 1, 'W', 'R');
+    for (const x of [2, 6, 10]) p.line(x, 6, x, 12, 'y');
+    p.rect(3, 9, 3, 2, 'w').rect(8, 8, 3, 2, 'w').rect(0, 12, 14, 2, 'N');
+  }),
+  obj_mazoFeria: icon((p) => {
+    p.rect(1, 1, 8, 5, 'n').rect(1, 1, 8, 1, 'N').rect(1, 5, 8, 1, 'k');
+    p.line(5, 6, 11, 12, 'N').line(6, 6, 12, 12, 'N');
+    p.disc(11.5, 2.5, 1.5, 'y').px(11, 2, 'W');
+  }),
+  obj_tamborRedoble: icon((p) => {
+    p.ellipse(6.5, 5, 6, 2, 'w').rect(1, 5, 12, 6, 'R').ellipse(6.5, 11, 6, 2, 'R');
+    for (let x = 2; x < 12; x += 3) p.line(x, 6, x + 2, 10, 'y');
+    p.line(9, 1, 13, 0, 'N').line(4, 1, 0, 0, 'N');
+  }),
+  obj_cuboAgua: icon((p) => {
+    p.rect(2, 4, 10, 9, 'x').rect(2, 4, 10, 1, 'X').rect(3, 5, 8, 3, 'B');
+    p.line(2, 4, 6, 0, 's').line(12, 4, 8, 0, 's').px(6, 0, 's').px(7, 0, 's');
+    p.px(11, 2, 'C').px(12, 1, 'C');
+  }),
+  obj_focaAmaestrada: icon((p) => {
+    p.ellipse(6.5, 9, 5.5, 3.5, 's').disc(10, 6, 2.5, 's').px(11, 5, 'k');
+    p.disc(10, 2, 2, 'R').px(9, 1, 'W').px(10, 2, 'y');
+  }),
+  obj_mapaTesoro: icon((p) => {
+    p.rect(1, 2, 12, 10, 't').rect(1, 2, 12, 1, 'N').rect(1, 11, 12, 1, 'N');
+    p.line(3, 9, 6, 6, 'n').px(7, 6, 'n').px(8, 7, 'n');
+    p.line(9, 4, 11, 6, 'R').line(11, 4, 9, 6, 'R');
+  }),
 };
 
 // --- Recogibles ---

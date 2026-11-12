@@ -32,6 +32,19 @@ export interface ShotMods {
   charge?: boolean; // mantener el disparo lo carga (hasta ×4)
   crit?: number; // probabilidad base de crítico (la suerte la sube)
   wave?: boolean; // ondas anchas que atraviesan (megáfono)
+  // --- Objetos de la variedad ---
+  boomerang?: boolean; // vuelven y golpean otra vez
+  wiggle?: boolean; // zigzag ancho (serpentinas)
+  water?: boolean; // mojan: frenan y apagan el fuego de un golpe
+  sticky?: boolean; // frenan a quien golpean (chicle)
+  antiBala?: boolean; // rompen las balas enemigas (platos chinos)
+  jitter?: number; // dispersión al azar de cada pelota, en radianes (trabuco)
+  parallel?: boolean; // dos pelotas en paralelo (doble cañón)
+  linger?: boolean; // al acabar el alcance, se quedan en el suelo (bolos)
+  prism?: boolean; // al chocar con una pared se parten en tres (bola de espejos)
+  orbit?: boolean; // giran alrededor del payaso (aro de hula)
+  cross?: boolean; // cada cuarta ráfaga, en las cuatro direcciones (carrusel)
+  ramp?: boolean; // cada golpe seguido a la misma fiera duele más (mazo)
 }
 
 export interface StatSource {
@@ -89,6 +102,18 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
     charge: false,
     crit: 0,
     wave: false,
+    boomerang: false,
+    wiggle: false,
+    water: false,
+    sticky: false,
+    antiBala: false,
+    jitter: 0,
+    parallel: false,
+    linger: false,
+    prism: false,
+    orbit: false,
+    cross: false,
+    ramp: false,
   };
 
   for (const src of sources) {
@@ -124,6 +149,18 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
       shot.charge ||= !!m.charge;
       shot.crit += m.crit ?? 0;
       shot.wave ||= !!m.wave;
+      shot.boomerang ||= !!m.boomerang;
+      shot.wiggle ||= !!m.wiggle;
+      shot.water ||= !!m.water;
+      shot.sticky ||= !!m.sticky;
+      shot.antiBala ||= !!m.antiBala;
+      shot.jitter = Math.max(shot.jitter, m.jitter ?? 0);
+      shot.parallel ||= !!m.parallel;
+      shot.linger ||= !!m.linger;
+      shot.prism ||= !!m.prism;
+      shot.orbit ||= !!m.orbit;
+      shot.cross ||= !!m.cross;
+      shot.ramp ||= !!m.ramp;
     }
   }
 

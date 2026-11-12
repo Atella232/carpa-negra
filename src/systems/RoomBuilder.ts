@@ -283,6 +283,7 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       if (room.data.super) {
         sc.floorText(cx, 22, 'Trastienda', 0xc9b3ef, 0.6);
         if (first) {
+          sc.meta('trastienda');
           sc.addPedestal(cx, tileY(3), sc.preItem(room, 0, 'secreta'));
           sc.spawnPickup('globo_plata', tileX(3), tileY(4));
           sc.spawnPickup('taco_boletos', tileX(9), tileY(4));

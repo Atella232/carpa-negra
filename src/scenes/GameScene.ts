@@ -77,6 +77,10 @@ export class GameScene extends Phaser.Scene {
   doors: DoorInfo[] = [];
   pedestals: Pedestal[] = [];
   hazards: Fire[] = [];
+  /** Bolos: pelotas quietas en el suelo (como mucho 12). */
+  bolos: Shot[] = [];
+  /** Mazo de Feria: a quién se le está dando seguido y cuántas veces. */
+  ramp: { target: Enemy | null; n: number } = { target: null, n: 0 };
   /** Tachuelas (las temporales del faquir llevan `armed`: solo pinchan cuando dice). */
   spikes: { x: number; y: number; armed?: () => boolean }[] = [];
   /** Objetos propios de la sala (decorado, carteles...) que se borran al salir. */
@@ -403,6 +407,12 @@ export class GameScene extends Phaser.Scene {
     this.scene.pause();
   }
 
+  /** Un fuego (charco o brasero) apagado: cuenta para la partida y para el cartel de Bombero. */
+  fuegoApagado(): void {
+    this.run.stats.fuegos = (this.run.stats.fuegos ?? 0) + 1;
+    this.meta('fuego');
+  }
+
   /** Tus disparos apagan el fuego del suelo (los de fuego lo atraviesan sin apagarlo). */
   private checkFireShots(): void {
     if (!this.hazards.length) return;
@@ -412,7 +422,8 @@ export class GameScene extends Phaser.Scene {
       // el mismo margen con el que el fuego quema al payaso.
       const fire = this.hazards.find((h) => h.active && h.life > 0.3 && Math.abs(s.x - h.x) < 8 && Math.abs(s.y + 8 - h.y) < 9);
       if (!fire) continue;
-      fire.douse(s.opts.damage >= 7 ? 2 : 1);
+      // El agua (Flor de Solapa) lo apaga de un golpe.
+      fire.douse(s.opts.water ? 99 : s.opts.damage >= 7 ? 2 : 1);
       if (!s.opts.pierce && !s.opts.spectral) s.pop('obstaculo');
     }
   }
@@ -466,6 +477,15 @@ export class GameScene extends Phaser.Scene {
         break;
       case 'espejo':
         ev = { k: 'espejo' };
+        break;
+      case 'fuego':
+        ev = { k: 'fuego' };
+        break;
+      case 'trastienda':
+        ev = { k: 'trastienda' };
+        break;
+      case 'ladron':
+        ev = { k: 'ladron' };
         break;
       case 'ovacion':
         ev = { k: 'ovacion', count: Number(arg) };
