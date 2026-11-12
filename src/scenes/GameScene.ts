@@ -22,6 +22,7 @@ import { playMusic } from '../audio/music';
 import { installDebug } from '../debug/debugApi';
 import { DEBUG } from '../config';
 import { txt } from '../ui/text';
+import { statDiff } from '../ui/statInfo';
 
 export interface Groups {
   walls: Phaser.Physics.Arcade.StaticGroup;
@@ -103,6 +104,8 @@ export class GameScene extends Phaser.Scene {
     this.god = false;
     this.transitioning = false;
     this.mareoT = 0;
+    this.statChanges = new Map();
+    this.floatCount = 0;
     this.banners = [];
     this.bg = null;
     this.pickupMsgCd = 0;
@@ -146,6 +149,15 @@ export class GameScene extends Phaser.Scene {
 
     this.enterRoom(currentRoom(this.run), null);
     this.banner(`Acto ${['I', 'II', 'III', 'IV'][this.run.act - 1]}`, this.run.actName);
+    // Al cambiar de acto se recupera vida: se avisa sobre el payaso.
+    if (this.run.actHeal > 0) {
+      const n = this.run.actHeal;
+      this.run.actHeal = 0;
+      this.time.delayedCall(500, () => {
+        this.floatText(n >= 2 ? '+1 globo' : '+ medio globo', 0xd4323f);
+        this.snd('globo');
+      });
+    }
     if (DEBUG) installDebug(this);
   }
 
@@ -343,6 +355,7 @@ export class GameScene extends Phaser.Scene {
     this.bg?.destroy();
     this.bg = null;
     this.time.removeAllEvents();
+    this.floatCount = 0;
     this.nav = new Nav();
   }
 
@@ -444,6 +457,17 @@ export class GameScene extends Phaser.Scene {
     for (const pl of this.enemyShotsNear(120, 72, 400)) pl.pop();
     const id = this.drawItem('jefe');
     this.addPedestal(ROOM_W / 2, tileY(2), id);
+    // Además del objeto: un globo seguro y otro premio al azar.
+    const p = this.run.player;
+    const sure: PickupKind = p.hp < p.maxHp ? 'globo' : 'globo_plata';
+    const extra = this.rngLoot.weighted<PickupKind>([
+      { value: 'golosina', weight: 4 },
+      { value: 'globo_plata', weight: 3 },
+      { value: 'globo', weight: 2 },
+      { value: 'taco_boletos', weight: 2 },
+    ]);
+    this.spawnPickup(sure, tileX(4), tileY(3));
+    this.spawnPickup(extra, tileX(8), tileY(3));
     this.addTrapdoor();
     if (!this.run.player.redDamageTaken) {
       this.run.contractOpen = true;
@@ -485,6 +509,10 @@ export class GameScene extends Phaser.Scene {
     this.pickupMsgCd = Math.max(0, this.pickupMsgCd - dt);
     this.roomTime += dt;
     this.mareoT = Math.max(0, this.mareoT - dt);
+    for (const [k, v] of this.statChanges) {
+      v.t -= dt;
+      if (v.t <= 0) this.statChanges.delete(k);
+    }
     this.controls.inverted = this.mareoT > 0;
     for (const b of this.banners) b.t -= dt;
     this.banners = this.banners.filter((b) => b.t > 0);
@@ -671,7 +699,11 @@ export class GameScene extends Phaser.Scene {
       if (o.keys) p.keys = Math.min(99, p.keys + o.keys);
     }
     if (!this.run.seenItems.includes(id)) this.run.seenItems.push(id);
+    const before = this.stats;
     this.recomputeStats();
+    this.announceStats(before);
+    if (o?.maxHp) this.floatText(`+${o.maxHp / 2} globo${o.maxHp > 2 ? 's' : ''}`, 0xd4323f);
+    if (o?.tickets) this.floatText(`+${o.tickets} boletos`, 0xf2c14e);
     this.player.refreshCostumes();
     if (def.familiar) this.rebuildFamiliars();
     this.banner(def.name, def.desc);
@@ -1025,6 +1057,36 @@ export class GameScene extends Phaser.Scene {
         this.confetti(t.x, t.y - 10, 12);
       });
     }
+  }
+
+  /** Estadísticas que acaban de cambiar (para resaltarlas en el panel). */
+  statChanges = new Map<string, { up: boolean; t: number }>();
+
+  /**
+   * Compara con las estadísticas anteriores, muestra flechas sobre Pompón y
+   * devuelve un resumen corto ("Daño ↑ · Velocidad ↓").
+   */
+  announceStats(before: FinalStats): string {
+    const diff = statDiff(before, this.stats);
+    diff.forEach((d) => {
+      this.statChanges.set(d.label, { up: d.up, t: 4 });
+      this.floatText(`${d.label} ${d.up ? '↑' : '↓'}`, d.up ? 0x79b84a : 0xd4323f);
+    });
+    return diff.map((d) => `${d.label} ${d.up ? '↑' : '↓'}`).slice(0, 3).join(' · ');
+  }
+
+  private floatCount = 0;
+
+  /** Texto que sube y se desvanece sobre el payaso. */
+  floatText(s: string, color: number): void {
+    const i = this.floatCount++;
+    this.time.delayedCall(i * 180, () => {
+      const x = Phaser.Math.Clamp(this.player.x, 50, ROOM_W - 50);
+      const t = txt(this, x, Math.max(20, this.player.y - 30), s, color, 'center').setDepth(DEPTH.overlay);
+      this.roomObjs.push(t);
+      this.tweens.add({ targets: t, y: t.y - 16, alpha: 0, delay: 600, duration: 900, onComplete: () => t.destroy() });
+      this.time.delayedCall(200, () => (this.floatCount = Math.max(0, this.floatCount - 1)));
+    });
   }
 
   /** Precio con descuento de la Entrada Dorada. */

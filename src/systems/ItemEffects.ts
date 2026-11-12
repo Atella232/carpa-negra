@@ -230,11 +230,17 @@ export class ItemEffects {
     p.golosina = null;
     if (!sc.run.golosinaKnown.includes(effect)) sc.run.golosinaKnown.push(effect);
     sc.snd('golosina');
-    sc.banner(GOLOSINA_EFFECTS[effect].name, GOLOSINA_EFFECTS[effect].good ? '' : 'Puaj');
-    this.apply(effect);
+    const before = sc.stats;
+    const note = this.apply(effect);
+    // El aviso dice exactamente qué ha cambiado.
+    const changes = sc.announceStats(before);
+    sc.banner(GOLOSINA_EFFECTS[effect].name, changes || note);
+    if (note && !changes) sc.floatText(note, GOLOSINA_EFFECTS[effect].good ? 0x79b84a : 0xd4323f);
   }
 
-  apply(effect: GolosinaEffect): void {
+  /** Aplica el efecto. Devuelve una descripción si no es un cambio de estadísticas. */
+  apply(effect: GolosinaEffect): string {
+    let note = '';
     const sc = this.sc;
     const p = sc.run.player;
     const b = p.bonus;
@@ -252,11 +258,13 @@ export class ItemEffects {
           else p.hp--;
           sc.player.flash(0x79b84a);
           sc.snd('herido');
-        }
+          note = '- medio globo';
+        } else note = 'Te libras por poco';
         break;
       case 'menta':
         p.hp = p.maxHp;
         sc.snd('globo');
+        note = 'Vida llena';
         break;
       case 'halcon':
         b.range = (b.range ?? 0) + 1;
@@ -270,16 +278,20 @@ export class ItemEffects {
       case 'petardo':
         p.bombs += 1;
         sc.snd('petardo');
+        note = '+1 petardo';
         break;
       case 'mareo':
         sc.mareoT = 7;
+        note = 'Controles al revés 7 s';
         break;
       case 'fresa':
         p.shield = Math.min(p.shield + 2, 24 - p.maxHp);
         sc.snd('globo');
+        note = '+1 globo plateado';
         break;
     }
     sc.recomputeStats();
+    return note;
   }
 }
 

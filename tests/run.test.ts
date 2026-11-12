@@ -106,7 +106,10 @@ describe('actos', () => {
       const before = { ...run.player, passives: ['narizRoja'] };
       run.player.passives = ['narizRoja'];
       run.player.redDamageTaken = true;
+      run.player.hp = 1;
       advanceAct(run);
+      expect(run.player.hp).toBe(3);
+      expect(run.actHeal).toBe(2);
       expect(run.act).toBe(2);
       expect(['bestia', 'serpiente']).toContain(run.boss);
       expect(run.player.passives).toEqual(before.passives);

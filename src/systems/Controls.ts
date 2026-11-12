@@ -14,7 +14,8 @@ export type Action =
   | 'activo'
   | 'golosina'
   | 'pausa'
-  | 'aceptar';
+  | 'aceptar'
+  | 'estadisticas';
 
 const BINDINGS: Record<Action, string[]> = {
   arriba: ['W'],
@@ -30,6 +31,7 @@ const BINDINGS: Record<Action, string[]> = {
   golosina: ['Q'],
   pausa: ['ESC', 'P'],
   aceptar: ['ENTER'],
+  estadisticas: ['TAB'],
 };
 
 const SHOOT: Action[] = ['dispararArriba', 'dispararAbajo', 'dispararIzquierda', 'dispararDerecha'];
@@ -58,7 +60,7 @@ export class Controls {
       );
     }
     // Que las flechas y el espacio no muevan la página.
-    kb.addCapture('UP,DOWN,LEFT,RIGHT,SPACE');
+    kb.addCapture('UP,DOWN,LEFT,RIGHT,SPACE,TAB');
   }
 
   /** Llamar una vez por fotograma antes de leer nada. */

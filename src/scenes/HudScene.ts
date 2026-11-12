@@ -6,6 +6,7 @@ import { GAME_W, HUD_H, ROOM_H } from '../config';
 import { txt, setTxt } from '../ui/text';
 import { item } from '../data/items';
 import { BOSS_NAMES } from '../data/enemies';
+import { statRows } from '../ui/statInfo';
 import { GOLOSINA_TINT } from '../data/golosinas';
 import { doorVisible, roomKey, RoomState } from '../core/run';
 import { DIRS, DIR_VEC } from '../core/floorgen';
@@ -21,6 +22,11 @@ export class HudScene extends Phaser.Scene {
   private bannerSub!: Phaser.GameObjects.BitmapText;
   private bossName!: Phaser.GameObjects.BitmapText;
   private applauseLabel!: Phaser.GameObjects.BitmapText;
+  private statPanel!: Phaser.GameObjects.Container;
+  private statBg!: Phaser.GameObjects.Graphics;
+  private statLabels: Phaser.GameObjects.BitmapText[] = [];
+  private statValues: Phaser.GameObjects.BitmapText[] = [];
+  private statAlpha = 0;
 
   constructor() {
     super('Hud');
@@ -46,6 +52,22 @@ export class HudScene extends Phaser.Scene {
     this.bannerTitle = txt(this, GAME_W / 2, HUD_H + 16, '', 0xf2c14e, 'center');
     this.bannerSub = txt(this, GAME_W / 2, HUD_H + 26, '', 0xefe6d8, 'center');
     this.bossName = txt(this, GAME_W / 2, HUD_H + ROOM_H - 20, '', 0xefe6d8, 'center');
+
+    // Panel de estadísticas (Tab), arriba a la izquierda de la sala.
+    this.statLabels = [];
+    this.statValues = [];
+    this.statBg = this.add.graphics();
+    this.statBg.fillStyle(0x0b0710, 0.6).fillRect(0, 0, 100, 66);
+    const parts: Phaser.GameObjects.GameObject[] = [this.statBg];
+    for (let i = 0; i < 6; i++) {
+      const l = txt(this, 4, 3 + i * 10, '', 0xc2bccb);
+      const v = txt(this, 96, 3 + i * 10, '', 0xefe6d8, 'right');
+      this.statLabels.push(l);
+      this.statValues.push(v);
+      parts.push(l, v);
+    }
+    // Debajo de la franja de avisos para no taparlos.
+    this.statPanel = this.add.container(18, HUD_H + 40, parts).setAlpha(0).setDepth(50);
   }
 
   update(): void {
@@ -113,9 +135,28 @@ export class HudScene extends Phaser.Scene {
     g.fillStyle(0x0b0710, 1);
     void st;
 
+    this.drawStatPanel();
     this.drawMinimap(g);
     this.drawBanner(g);
     this.drawBoss(g);
+  }
+
+  /** Con Tab (o justo después de un cambio) se ven las estadísticas. */
+  private drawStatPanel(): void {
+    const gs = this.gs;
+    const show = gs.controls.isDown('estadisticas') || gs.statChanges.size > 0;
+    // Si Pompón está detrás del panel, casi transparente para no taparlo.
+    const behind = gs.player.x < 18 + 100 + 8 && gs.player.y > 40 - 12 && gs.player.y < 40 + 66 + 16;
+    const target = show ? (behind ? 0.3 : 0.9) : 0;
+    this.statAlpha += (target - this.statAlpha) * 0.25;
+    this.statPanel.setAlpha(this.statAlpha);
+    if (this.statAlpha < 0.02) return;
+    statRows(gs.stats).forEach((row, i) => {
+      const ch = gs.statChanges.get(row.label);
+      setTxt(this.statLabels[i], row.label);
+      setTxt(this.statValues[i], ch ? `${ch.up ? '↑' : '↓'} ${row.text}` : row.text);
+      this.statValues[i].setTint(ch ? (ch.up ? 0x79b84a : 0xd4323f) : 0xefe6d8);
+    });
   }
 
   private drawMinimap(g: Phaser.GameObjects.Graphics): void {

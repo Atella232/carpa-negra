@@ -7,7 +7,7 @@ del circo, objetos que se combinan entre sí y un jefe al final de cada acto.
 
 Esta versión incluye dos actos completos: **Acto I: La Carpa de Bienvenida** y
 **Acto II: Las Jaulas**. La trampilla del jefe del Acto I baja al Acto II
-conservando vida y objetos.
+conservando objetos y recuperando un globo rojo.
 
 ## Jugar
 
@@ -30,6 +30,7 @@ juego en `dist/` (es una web estática).
 | E o Mayús | Poner un petardo |
 | Espacio | Usar el objeto activo |
 | Q | Comer la golosina |
+| Tab | Ver las estadísticas (mantener pulsado) |
 | Esc o P | Pausa (volumen, reiniciar, menú) |
 
 En el menú: **S** para escribir una semilla y **A** para ver el álbum de objetos.

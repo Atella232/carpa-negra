@@ -98,6 +98,8 @@ export interface RunState {
   roomsCleared: number;
   startedAt: number;
   seenItems: string[];
+  /** Medios globos curados al empezar el acto actual (para avisar). */
+  actHeal: number;
 }
 
 export const roomKey = (x: number, y: number) => `${x},${y}`;
@@ -195,6 +197,7 @@ export function createRun(seedInput: string, now = 0): RunState {
     roomsCleared: 0,
     startedAt: now,
     seenItems: [],
+    actHeal: 0,
   };
 }
 
@@ -206,6 +209,11 @@ export function advanceAct(run: RunState): void {
   run.contractOpen = false;
   run.bossDefeated = false;
   run.player.redDamageTaken = false;
+  // Entre actos se recupera al menos un globo rojo.
+  const p = run.player;
+  const before = p.hp;
+  p.hp = Math.min(p.maxHp, p.hp + 2);
+  run.actHeal = p.hp - before;
 }
 
 export function currentRoom(run: RunState): RoomState {

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene } from './GameScene';
 import { GAME_H, GAME_W } from '../config';
 import { txt, setTxt } from '../ui/text';
+import { statRows } from '../ui/statInfo';
 import { item } from '../data/items';
 import { formatSeed } from '../core/rng';
 import { getVolumes, setVolumes } from '../audio/sfx';
@@ -21,14 +22,7 @@ export class PauseScene extends Phaser.Scene {
     txt(this, GAME_W / 2, 6, 'Pausa', 0xd4323f, 'center').setScale(2);
     txt(this, GAME_W / 2, 24, `Acto ${run.act}: ${run.actName}`, 0x8a8394, 'center');
 
-    const lines = [
-      ['Daño', st.damage.toFixed(2)],
-      ['Cadencia', st.shotsPerSecond.toFixed(2)],
-      ['Alcance', (st.range / 16).toFixed(1)],
-      ['Vel. tiro', (st.shotSpeed / 100).toFixed(2)],
-      ['Velocidad', (st.speed / 80).toFixed(2)],
-      ['Suerte', st.luck.toFixed(1)],
-    ];
+    const lines = statRows(st).map((r) => [r.label, r.text]);
     lines.forEach(([k, v], i) => {
       txt(this, 12, 40 + i * 10, k, 0xefe6d8);
       txt(this, 112, 40 + i * 10, v, 0xf2c14e, 'right');
