@@ -1,5 +1,32 @@
 # Carpa Negra — Plan de variedad: más enemigos, salas, objetos y azar
 
+## Estado (noviembre de 2026)
+
+Ejecutado entero en la rama `variedad`, un commit por fase. Lo que se apartó del
+plan, y por qué (las cifras de las tablas de abajo ya son las definitivas salvo
+estas notas):
+
+- **Fase 0**: el test destapó una sala más que la tabla (`cabezas_rodantes`,
+  con 4 criaturas pesadas): se cambió un cabezudo por una bailarina. En
+  `reflejo_total` se quitó un tragasables (no un reflejo), por la misma regla.
+  `braseros` y `tragafuegos_nichos` recibieron un mimo: los comodines aún no
+  existían.
+- **Fase 2**: si no caben todas las salas extra sorteadas, el generador vuelve a
+  intentarlo (y a partir de 300 intentos pide menos), en lugar de colocar solo
+  las que quepan.
+- **Fase 3**: el malabarista lanza sus mazas cada 2 s (no 2,5): el bot tardaba
+  demasiado en limpiar sus salas.
+- **Fase 4**: el mono ladrón, con el saco, huye más despacio hacia sitios
+  despejados (no a las esquinas) y se sienta a contar 1,5 s de cada 4: si no,
+  era casi imposible de cazar. `comodin_fosos` lleva una criatura menos (11).
+- **Fase 5**: el autómata tiene 18 de vida (no 22). `engranajes` lleva 4 bloques
+  y `comodin_espejos` 2 espejos (no 8 y 4): el bot apenas las limpiaba.
+- **Fase 7**: el bumerán vuelve a la mano del payaso (no al punto de salida) y a
+  la vuelta no choca con las paredes. El carrusel es un modificador de disparo
+  (`shot.cross`); el tambor, una bandera (`redoble`).
+
+Resultados del bot antes y después: `docs/semillas-de-referencia.md`.
+
 ## Contexto
 
 El juego gusta, pero se hace repetitivo. Se pide más variedad «sin pasarse»: más tipos de enemigos, más salas y mejor hechas (justas), más objetos que cambien el disparo, más azar en las salas especiales (hoy siempre hay una de cada y una sola secreta), alguna sala más por acto y que las llamas se puedan apagar a disparos.

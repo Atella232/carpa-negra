@@ -56,7 +56,7 @@ allí se usa «Añadir a pantalla de inicio».
 - **Función del día**: la misma semilla para todo el mundo, con marcador propio.
 - **Personaje**: Pompón y tres más que se desbloquean (Colombina, Bruno y Silencio).
 - **La Gira**: tras el final de la chistera, cinco niveles de dificultad.
-- **Carteles**: 24 logros que desbloquean objetos, personajes y modos.
+- **Carteles**: 27 logros que desbloquean objetos, personajes y modos.
 - **Álbum**: todos los objetos vistos, con su descripción y su historia.
 - **Opciones**: volúmenes, sacudidas, destellos, paradas de impacto, paso de sala
   (deslizar o fundido), números de daño, balas de alto contraste, vibración,
@@ -64,20 +64,30 @@ allí se usa «Añadir a pantalla de inicio».
 
 ## Los actos
 
+Cada acto tiene entre 28 y 34 salas distintas y ninguna se repite dentro del
+mismo acto. Muchas llevan **comodines**: la misma sala trae criaturas distintas
+de una partida a otra.
+
 ### Acto I: La Carpa de Bienvenida
 Mimos, polillas, monos platilleros, lanzacuchillos, cajas sorpresa,
-monociclistas, tragafuegos y pulgas. Jefes: El Forzudo o Los Siameses.
+monociclistas, tragafuegos, pulgas, vendedores de globos (sus globos flotan
+hacia ti y revientan), malabaristas (sus mazas paran tus disparos) y perritos
+amaestrados que cazan en jauría. Jefes: El Forzudo o Los Siameses.
 
 ### Acto II: Las Jaulas
 Jaulas que dejan pasar las balas y fardos de paja. Leones, cobras, osos, loros,
-domadores zombis y payasitos tristes. Jefes: La Bestia de la Jaula o La Mujer
+domadores zombis, payasitos tristes, focas equilibristas (pelotas que rebotan),
+monos ladrones (te roban boletos; si los cazas, te devuelven el doble) y
+faquires que siembran tachuelas. Jefes: La Bestia de la Jaula o La Mujer
 Serpiente.
 
 ### Acto III: La Casa de los Espejos
 Espejos que devuelven todos los disparos y suelos móviles. Reflejos rotos que
 contestan a tus disparos, bailarinas de caja de música, ilusionistas con cartas
 que vuelven y señuelos, ventrílocuos con muñecos que se levantan, tragasables que
-desvían lo que les llega de frente y cabezudos que se parten. Jefes:
+desvían lo que les llega de frente, cabezudos que se parten, autómatas que
+marchan a compás, sombras que repiten tu camino e hipnotizadores que te marean.
+Jefes:
 **Tu Reflejo** (dispara con una copia de tus objetos) o **Madame Fortuna** (cada
 ataque se anuncia con una carta del tarot).
 
@@ -85,19 +95,30 @@ ataque se anuncia con una carta del tarot).
 Salas por oleadas («números»), apagones con luz alrededor del payaso, aros de
 fuego que prenden tus pelotas y cañones de pista. El público vota: si llenas el
 aplausómetro te lanza regalos y un ramo; si te golpean, abuchea y tira tomates.
-Trapecistas, hombres bala, zancudos, augustos, acomodadores y la Mujer Barbuda.
+Trapecistas, hombres bala, zancudos, augustos, acomodadores, la Mujer Barbuda,
+coches de payasos, hombres orquesta y dragones de papel que dejan fuego.
 Jefe final: **El Maestro de Ceremonias**, en tres fases (el presentador, el duelo
 y la Carpa Negra). Después, una salida y una chistera: dos finales.
 
 ### Salas especiales
-Camerino, puesto de feria (con reposición), entre bastidores (secreta), diana,
-barraca de la ruleta, **Gabinete de la Pitonisa** (lecturas por boletos) y
-**Número de riesgo** (un objeto que, al cogerlo, desata dos oleadas).
+Siempre hay camerino, puesto de feria (con reposición) y una sala secreta (entre
+bastidores). El resto se sortea en cada acto: diana, barraca de la ruleta,
+**Almacén de atrezo** (cofres, con llave), **Cama de Clavos** (medio globo por
+cada premio), **Carromato del Curandero** (globos), **Gabinete de la Pitonisa**
+(lecturas por boletos), **Número de riesgo** (un objeto que, al cogerlo, desata
+dos oleadas) y, a veces, un segundo camerino. La mitad de las veces hay una
+segunda sala secreta, la **trastienda**, con un objeto seguro.
+
+### Fuego
+Los charcos de fuego se apagan con dos disparos, los braseros con tres y los
+petardos apagan todo lo que pillan. Las pelotas en llamas no apagan nada.
 
 ### Objetos
-64 objetos: estadísticas, disparos (triple, rebote, fuego, veneno, esquirlas,
-cadena, división, carga, explosivos, críticos...), familiares que escalan con tu
-daño, activos y los nueve de **El Contrato**, que se pagan con globos máximos.
+80 objetos: estadísticas, disparos (triple, rebote, fuego, veneno, esquirlas,
+cadena, división, carga, explosivos, críticos, bumerán, zigzag, agua, perdigones,
+doble cañón, bolos, bola de espejos, aro de hula, carrusel...), familiares que
+escalan con tu daño, activos y los nueve de **El Contrato**, que se pagan con
+globos máximos.
 Los **trajes** (Fiera, Malabarista, Mago y Payaso Completo) dan un extra y un
 disfraz al juntar varias piezas.
 
@@ -138,6 +159,11 @@ npm run build     # comprobación de tipos + compilación
 `tests/golden.test.ts` fija los mapas de 25 semillas de los actos I y II: si
 falla, una semilla antigua ya no da la misma partida.
 
+`tests/balance.test.ts` comprueba que cada sala cabe en el presupuesto de
+amenaza de su dificultad (cada criatura tiene su valor en `THREAT`, en
+`src/data/enemies.ts`). Cómo añadir criaturas, salas y objetos: ver
+`docs/plan-variedad.md`.
+
 En desarrollo (o con `?debug=1`) existe `window.__juego` en la consola:
 
 - `__juego.estado()`, `__juego.mapa()`: estado de la partida y mapa del piso.
@@ -148,6 +174,9 @@ En desarrollo (o con `?debug=1`) existe `window.__juego` en la consola:
 - `__juego.hacer({ derecha: true, dispararArriba: true }, 30)`: simula
   fotogramas con teclas pulsadas.
 - `__juego.telemetria()`: salas más dañinas y lentas, y causas de muerte.
+- `__juego.probarSalas()`: el bot juega cada sala del acto actual (con y sin
+  volteos) y devuelve los medios globos perdidos y los segundos, de la peor a
+  la mejor. Sirve para comparar una sala nueva con las que ya había.
 - `__juego.botActo()`: un bot juega el acto actual **sin modo dios** (esquiva,
   apunta, recoge y baja por la trampilla). Resultados de las semillas de
   referencia en `docs/semillas-de-referencia.md`.
