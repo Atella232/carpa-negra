@@ -81,11 +81,11 @@ export const ITEMS: ItemDef[] = [
   },
   {
     id: 'algodonAzucar', name: 'Algodón de Azúcar', desc: '+1 globo', kind: 'pasivo',
-    pools: [...ALL, 'jefe', 'puesto'], onPickup: { maxHp: 2, heal: 2 },
+    pools: [...ALL, 'jefe', 'puesto'], onPickup: { maxHp: 2, heal: 2 }, weight: 1.5,
   },
   {
     id: 'manzanaCaramelo', name: 'Manzana de Caramelo', desc: '+1 globo y algo de daño', kind: 'pasivo',
-    pools: [...ALL, 'jefe'], onPickup: { maxHp: 2, heal: 2 }, stats: { damage: 0.5 },
+    pools: [...ALL, 'jefe'], onPickup: { maxHp: 2, heal: 2 }, stats: { damage: 0.5 }, weight: 1.5,
     lore: 'Tiene un gusano. El gusano también tiene hambre.',
   },
   {
@@ -207,7 +207,7 @@ export const ITEMS: ItemDef[] = [
   },
   {
     id: 'corazonOso', name: 'Corazón de Oso', desc: '+2 globos', kind: 'pasivo',
-    pools: [...ALL, 'jefe'], onPickup: { maxHp: 4, heal: 4 }, stats: { speed: -0.3 },
+    pools: [...ALL, 'jefe'], onPickup: { maxHp: 4, heal: 4 }, stats: { speed: -0.3 }, weight: 1.5,
   },
   {
     id: 'collarPinchos', name: 'Collar de Pinchos', desc: 'Quien te toca, se pincha', kind: 'pasivo',
@@ -324,7 +324,7 @@ export const ITEMS: ItemDef[] = [
   },
   {
     id: 'platosChinos', name: 'Platos Chinos', desc: 'Tus pelotas rompen las balas enemigas', kind: 'pasivo',
-    pools: [...ALL, 'jefe'], shot: { antiBala: true },
+    pools: [...ALL, 'secreta'], shot: { antiBala: true },
     lore: 'Doce platos girando. El truco es no mirar ninguno.',
   },
   {
@@ -334,7 +334,7 @@ export const ITEMS: ItemDef[] = [
   },
   {
     id: 'dobleCanon', name: 'Doble Cañón', desc: 'Dos pelotas en paralelo', kind: 'pasivo',
-    pools: [...ALL, 'jefe'], shot: { parallel: true }, stats: { tearsMult: 0.85 }, tags: ['malabarista'],
+    pools: [...ALL, 'secreta'], shot: { parallel: true }, stats: { tearsMult: 0.85 }, tags: ['malabarista'],
   },
   {
     id: 'bolos', name: 'Bolos', desc: 'Las pelotas se quedan en el suelo', kind: 'pasivo',
@@ -347,7 +347,7 @@ export const ITEMS: ItemDef[] = [
     lore: 'Colgaba del techo de la Casa de los Espejos. Ahora cuelga de ti.',
   },
   {
-    id: 'aroHula', name: 'Aro de Hula', desc: 'Las pelotas giran a tu alrededor', kind: 'pasivo',
+    id: 'aroHula', name: 'Aro de Hula', desc: 'Las pelotas dan una vuelta a tu alrededor', kind: 'pasivo',
     pools: [...ALL, 'secreta'], shot: { orbit: true }, stats: { tearsMult: 0.8 }, tags: ['malabarista'],
   },
   {
@@ -357,7 +357,7 @@ export const ITEMS: ItemDef[] = [
   },
   {
     id: 'mazoFeria', name: 'Mazo de Feria', desc: 'Golpear seguido a la misma fiera duele más', kind: 'pasivo',
-    pools: [...ALL, 'jefe'], shot: { ramp: true },
+    pools: [...ALL, 'puesto'], shot: { ramp: true },
     lore: 'Dale fuerte y suena la campana. Dale más fuerte y suena otra cosa.',
   },
   {

@@ -50,6 +50,9 @@ export interface ShotOpts {
   ramp?: boolean;
 }
 
+/** Aro de Hula: segundos que la pelota gira alrededor del payaso antes de salir. */
+const ORBIT_TIME = 0.7;
+
 export class Shot extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
   opts: Required<ShotOpts>;
@@ -77,8 +80,10 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
   /** Bolos: la pelota ya está quieta en el suelo. */
   lingering = false;
   private lingerT = 0;
-  /** Aro de Hula: ángulo y reloj de la órbita. */
+  /** Aro de Hula: ángulo, dirección de tiro y reloj de la vuelta. */
   private orbitA = 0;
+  private fireA = 0;
+  private orbitT = 0;
   private hitClearT = 0;
   /** Platos Chinos: balas que puede romper aún. */
   antiLeft = 1;
@@ -117,8 +122,8 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     this.homeY = y;
     this.lastVel = { x: vx, y: vy };
     this.orbitA = Math.atan2(vy, vx);
+    this.fireA = this.orbitA;
     this.antiLeft = this.opts.pierce ? 3 : 1;
-    if (this.opts.orbit) this.maxLife *= 2.2;
     if (this.opts.water && friendly) this.setTint(0x9fd8ff);
     if (this.opts.crit) this.setTint(0xfff2a8);
     // Alto contraste: balas enemigas más grandes y de un color que no hay en el suelo.
@@ -135,21 +140,28 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     const t = this.life / this.maxLife;
     const scene = this.scene as GameScene;
 
-    // Aro de Hula: gira alrededor del payaso, abriéndose poco a poco.
+    // Aro de Hula: da una vuelta alrededor del payaso (golpeando lo que haya
+    // cerca) y luego sale disparada hacia donde apuntabas, con todo su alcance.
     if (this.opts.orbit && this.friendly) {
       const p = scene.player;
-      this.orbitA += dt * 5;
-      const r = 18 + 16 * Math.min(1, t);
+      this.orbitT += dt;
+      this.orbitA += dt * 9;
+      const r = 16 + 10 * Math.min(1, this.orbitT / ORBIT_TIME);
       const x = p.x + Math.cos(this.orbitA) * r,
         y = p.y - 8 + Math.sin(this.orbitA) * r;
       this.body.reset(x, y);
       this.shadow.setPosition(x, y + 8);
+      this.life = 0;
       this.hitClearT -= dt;
       if (this.hitClearT <= 0) {
         this.hitClearT = 0.4;
         this.hit.clear();
       }
-      if (this.life >= this.maxLife) this.pop();
+      if (this.orbitT >= ORBIT_TIME) {
+        this.opts.orbit = false;
+        this.hit.clear();
+        this.body.setVelocity(Math.cos(this.fireA) * this.speed, Math.sin(this.fireA) * this.speed);
+      }
       return;
     }
     // Bolos: quieta en el suelo hasta que alguien la pise (o pasen 3 s).

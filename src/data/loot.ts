@@ -8,9 +8,10 @@ export type Weighted<T> = { value: T; weight: number }[];
 export const DROP_RANDOM: Weighted<PickupKind> = [
   { value: 'boleto', weight: 30 },
   { value: 'taco_boletos', weight: 4 },
-  // Más curas que en la versión de dos actos: la partida ahora dura cuatro.
-  { value: 'medio_globo', weight: 16 },
-  { value: 'globo', weight: 10 },
+  // Más curas que en la versión de dos actos: la partida ahora dura cuatro, y
+  // cada acto tiene una sala normal más desde la versión con más variedad.
+  { value: 'medio_globo', weight: 19 },
+  { value: 'globo', weight: 12 },
   { value: 'petardo', weight: 13 },
   { value: 'llave', weight: 12 },
   { value: 'cofre', weight: 8 },

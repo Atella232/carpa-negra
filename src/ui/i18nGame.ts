@@ -11,7 +11,7 @@ export const EN_GAME: Record<string, string> = {
   'Doble Cañón': 'Double Barrel', 'Dos pelotas en paralelo': 'Two balls side by side',
   'Bolos': 'Skittles', 'Las pelotas se quedan en el suelo': 'Balls stay on the floor',
   'Bola de Espejos': 'Mirror Ball', 'Al chocar con una pared se parten en tres': 'They split in three when they hit a wall',
-  'Aro de Hula': 'Hula Hoop', 'Las pelotas giran a tu alrededor': 'Balls spin around you',
+  'Aro de Hula': 'Hula Hoop', 'Las pelotas dan una vuelta a tu alrededor': 'Balls loop around you first',
   'Carrusel': 'Carousel', 'Cada cuarta ráfaga sale hacia todos lados': 'Every fourth volley goes every way',
   'Mazo de Feria': 'High Striker', 'Golpear seguido a la misma fiera duele más': 'Hitting the same beast in a row hurts more',
   'Tambor de Redoble': 'Drum Roll', 'Cada quinta ráfaga es enorme': 'Every fifth volley is huge',
