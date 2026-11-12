@@ -17,7 +17,10 @@ no perdiste globos rojos en el acto).
 
 ## Jugar
 
-Necesitas Node 20 o superior.
+**En línea:** <https://atella232.github.io/carpa-negra/> (también en el móvil,
+que puede instalarlo con «Añadir a pantalla de inicio»).
+
+Para jugar en local necesitas Node 20 o superior.
 
 ```bash
 npm install
