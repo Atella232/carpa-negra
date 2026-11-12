@@ -45,6 +45,10 @@ juego en `dist/` (es una web estática que también se puede instalar en el móv
 En pantallas táctiles aparecen dos palancas y botones. Todas las teclas se pueden
 reasignar en **Opciones → Teclas**.
 
+El botón de la esquina (⛶) pone el juego a pantalla completa y lo quita, igual
+que la opción del menú. No aparece en iPhone, donde el navegador no lo permite:
+allí se usa «Añadir a pantalla de inicio».
+
 ## Menú
 
 - **Continuar**: la partida se guarda al entrar en cada sala y poco después de

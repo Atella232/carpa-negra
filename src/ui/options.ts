@@ -8,6 +8,7 @@ import { getVolumes, setVolumes } from '../audio/sfx';
 import { ACTIONS, Action, Controls, codeLabel, DEFAULT_KEYS } from '../systems/Controls';
 import { t } from './i18n';
 import { applyTouchSetting } from '../systems/Touch';
+import { fullscreenAvailable, isFullscreen, toggleFullscreen } from '../systems/Fullscreen';
 
 const ACTION_NAME: Record<Action, string> = {
   arriba: 'Andar arriba',
@@ -88,11 +89,15 @@ export function openOptions(scene: Phaser.Scene, onClose: () => void, depth = 20
       },
       // En iPhone Safari no existe la pantalla completa (allí se usa «Añadir a
       // pantalla de inicio», que abre el juego sin barras gracias al manifiesto).
-      ...(scene.scale.fullscreen.available
+      ...(fullscreenAvailable()
         ? [
             {
-              label: () => t('Pantalla completa'),
-              onSelect: () => (scene.scale.isFullscreen ? scene.scale.stopFullscreen() : scene.scale.startFullscreen()),
+              label: () => `${t('Pantalla completa')}  ${onOff(isFullscreen())}`,
+              onSelect: () => {
+                toggleFullscreen();
+                // El cambio llega un instante después: se refresca la etiqueta.
+                window.setTimeout(() => menu.refresh(), 300);
+              },
             },
           ]
         : []),

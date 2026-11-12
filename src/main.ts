@@ -8,6 +8,7 @@ import { PauseScene } from './scenes/PauseScene';
 import { EndScene } from './scenes/EndScene';
 import { unlockAudio } from './audio/sfx';
 import { applyTouchSetting, touchReserve } from './systems/Touch';
+import { setupFullscreenButton } from './systems/Fullscreen';
 
 /**
  * Escalado entero en píxeles reales del dispositivo: siempre nítido y lo más
@@ -61,6 +62,7 @@ document.addEventListener('visibilitychange', () => document.hidden && autoPause
 
 (window as unknown as { __phaser: Phaser.Game }).__phaser = game;
 applyTouchSetting();
+setupFullscreenButton();
 
 // ?fps: contador de fotogramas en una esquina (para medir en móviles reales).
 if (new URLSearchParams(window.location.search).has('fps')) {

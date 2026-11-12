@@ -15,6 +15,8 @@ export function applyTouchSetting(): void {
   const on = mode === 'si' || (mode === 'auto' && isTouchDevice());
   if (on && !root) build();
   if (root) root.style.display = on ? 'block' : 'none';
+  // El botón de pantalla completa se recoloca para no pisar los controles.
+  document.documentElement.classList.toggle('con-tactil', on);
   if (on && mode === 'auto') Controls.get().lastDevice = 'tactil';
   if (!on) {
     const ext = Controls.get().external;

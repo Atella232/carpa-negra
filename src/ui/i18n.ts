@@ -32,6 +32,7 @@ const EN: Record<string, string> = {
   'no': 'off',
   'sí': 'on',
   'Pantalla completa': 'Fullscreen',
+  'Salir de pantalla completa': 'Exit fullscreen',
   'Idioma': 'Language',
   'Teclas': 'Keys',
   'Balas de alto contraste': 'High-contrast bullets',
