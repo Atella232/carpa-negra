@@ -11,6 +11,9 @@ estas notas):
   `reflejo_total` se quitó un tragasables (no un reflejo), por la misma regla.
   `braseros` y `tragafuegos_nichos` recibieron un mimo: los comodines aún no
   existían.
+- **Fase 1**: el disparo que moja un fuego **sigue su camino** (cada pelota moja
+  cada fuego una sola vez). Pararlo, como decía el plan, convertía el fuego en un
+  escudo: en `tragafuegos_nichos` el bot perdía 24 medios globos por sala; ahora, 2.
 - **Fase 2**: si no caben todas las salas extra sorteadas, el generador vuelve a
   intentarlo (y a partir de 300 intentos pide menos), en lugar de colocar solo
   las que quepan.

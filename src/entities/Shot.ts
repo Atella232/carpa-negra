@@ -82,6 +82,8 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
   private hitClearT = 0;
   /** Platos Chinos: balas que puede romper aún. */
   antiLeft = 1;
+  /** Fuegos que esta pelota ya ha mojado (cada uno, una sola vez). */
+  doused = new Set<object>();
 
   constructor(scene: GameScene, x: number, y: number, vx: number, vy: number, friendly: boolean, opts: ShotOpts) {
     super(scene, x, y, opts.texture ?? (friendly ? 'pelota' : 'bala'));
