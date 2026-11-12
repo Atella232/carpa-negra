@@ -132,6 +132,22 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   B: 'barbuda',
 };
 
+/**
+ * Amenaza de cada criatura (para repartir la dificultad de las salas). Una sala
+ * suma la de sus criaturas y debe caber en el presupuesto de su dificultad
+ * (ver tests/balance.test.ts). 0 = no sale en plantillas.
+ */
+export const THREAT: Record<EnemyKind, number> = {
+  polilla: 1, payasito: 1,
+  pulga: 1.5,
+  mimo: 2, monociclista: 2, loro: 2, munieco: 2, cabecita: 2,
+  mono: 3, lanzacuchillos: 3, caja: 3, tragafuegos: 3, leon: 3, cobra: 3, reflejo: 3, bailarina: 3,
+  trapecista: 3, augusto: 3, acomodador: 3,
+  oso: 4, domador: 4, ilusionista: 4, ventrilocuo: 4, tragasables: 4, cabezudo: 4, hombreBala: 4, zancudo: 4,
+  barbuda: 7,
+  senuelo: 0, orbe: 0, copia: 0, guante: 0,
+};
+
 /** Color de los restos al morir. */
 export const GIB_COLOR: Partial<Record<string, number>> = {
   mimo: 0xefe6d8, polilla: 0xf2c14e, mono: 0xa8673b, lanzacuchillos: 0xd4323f, caja: 0xa8673b,

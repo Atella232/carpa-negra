@@ -4,7 +4,7 @@ import type { Action } from '../systems/Controls';
 import { ITEMS } from '../data/items';
 import { GOLOSINA_EFFECTS } from '../data/golosinas';
 import { currentRoom, roomKey, doorVisible, advanceAct, bossRoom } from '../core/run';
-import { findTemplate } from '../data/acts';
+import { actDef, findTemplate } from '../data/acts';
 import { summary } from '../core/telemetry';
 import { fight as botFight, loot as botLoot, plan as botPlan, walkTo as botWalk, shop as botShop } from './bot';
 import type { Enemy } from '../entities/Enemy';
@@ -271,6 +271,44 @@ export function installDebug(sc: GameScene): void {
         acto: sc.run.act, muerto: sc.player.dead, causa: sc.lastHurtCause, salas: rooms, jefe,
         globos: `${p.hp}/${p.maxHp}+${p.shield}`, objetos: [...p.passives, ...(p.active ? [p.active] : [])], segundos: Math.round(sc.run.playTime),
       };
+    },
+    /**
+     * El bot juega cada plantilla del acto actual (sin modo dios), con y sin
+     * volteos, `veces` veces cada una, y devuelve la media de medios globos
+     * perdidos y segundos, de la peor sala a la mejor. Para cambiar de acto,
+     * antes `acto(n)`. Sirve para comparar salas nuevas con las que ya había.
+     */
+    probarSalas(veces = 3, maxSecs = 90) {
+      sc.god = false;
+      const av = (n: number) => api.avanzar(n);
+      const p = sc.run.player;
+      const out: { sala: string; dif: number; seg: number; perdidos: number; limpias: string }[] = [];
+      for (const tpl of actDef(sc.run.act).templates) {
+        if (tpl.diff === 0) continue;
+        let lost = 0,
+          secs = 0,
+          ok = 0,
+          n = 0;
+        for (let i = 0; i < veces; i++) {
+          for (const flips of [{}, { flipX: true, flipY: true }]) {
+            if (sc.player.dead) break;
+            // Mucha vida para que una mala sala no acabe la prueba.
+            p.maxHp = 24;
+            p.hp = 24;
+            p.shield = 0;
+            api.sala(tpl.id, flips);
+            av(30);
+            const r = botFight(sc, av, maxSecs);
+            lost += Math.max(0, 24 - p.hp);
+            secs += r.secs;
+            ok += r.cleared ? 1 : 0;
+            n++;
+          }
+        }
+        if (!n) break;
+        out.push({ sala: tpl.id, dif: tpl.diff, seg: Math.round(secs / n), perdidos: Math.round((lost / n) * 10) / 10, limpias: `${ok}/${n}` });
+      }
+      return out.sort((a, b) => b.dif - a.dif || b.perdidos - a.perdidos);
     },
     /** Resumen de la telemetría local (salas dañinas, lentas y causas de muerte). */
     telemetria: () => summary(),

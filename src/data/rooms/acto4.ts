@@ -208,7 +208,7 @@ export const ACTO4_ROOMS: RoomTemplate[] = [
     ],
   },
   {
-    id: 'viejos_iv', diff: 2,
+    id: 'viejos_iv', diff: 3,
     rows: [
       '.............',
       '..l.......l..',
@@ -246,9 +246,9 @@ export const ACTO4_ROOMS: RoomTemplate[] = [
         '.............',
         '..s.......s..',
         '.............',
-        '.....e.e.....',
+        '.....e.......',
         '.............',
-        '..w.......a..',
+        '..........a..',
         '.............',
       ],
     ],
