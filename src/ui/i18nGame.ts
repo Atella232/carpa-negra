@@ -68,6 +68,7 @@ export const EN_GAME: Record<string, string> = {
   'Aplauso Eterno': 'Eternal Applause', 'El público te perdona la mitad': 'The crowd forgives you halfway',
   'Calcetín Apestoso': 'Smelly Sock', 'No hace nada. Huele fatal': 'Does nothing. Smells awful',
   // --- Criaturas ---
+  'Coche de payasos': 'Clown Car', 'Hombre orquesta': 'One-Man Band', 'Dragón de papel': 'Paper Dragon',
   'Autómata de feria': 'Fairground Automaton', 'Sombra': 'Shadow', 'Hipnotizador': 'Hypnotist', '¡Mareado!': 'Dizzy!',
   'Foca equilibrista': 'Balancing Seal', 'Mono ladrón': 'Thieving Monkey', 'Faquir': 'Fakir',
   '-1 boleto': '-1 ticket', '¡Tu botín, y más!': 'Your loot, and more!',

@@ -283,4 +283,58 @@ export const ACT4_SPRITES: Record<string, SpriteDef> = {
     p.disc(6.5, 7, 6, 'e').disc(4, 7, 2.5, 'o').disc(9, 7, 2.5, 'o');
     p.ring(6.5, 7, 6, 'R').px(6, 1, 'Y');
   }),
+  // --- Nuevas del Acto IV ---
+  // Coche de payasos: 0 cerrado, 1 con la puerta abierta (va a bajar uno).
+  coche_payasos: {
+    w: 26,
+    h: 18,
+    frames: 2,
+    paint: (p, f) => {
+      p.rect(2, 6, 22, 7, 'R').rect(5, 2, 13, 5, 'R').rect(6, 3, 5, 3, 'B').rect(12, 3, 5, 3, 'B');
+      p.rect(2, 6, 22, 1, 'm').rect(22, 8, 3, 2, 'y');
+      p.disc(7, 14, 3, 'k').disc(19, 14, 3, 'k').px(7, 14, 'G').px(19, 14, 'G');
+      p.rect(0, 9, 2, 2, 'x');
+      if (f === 1) p.rect(10, 6, 5, 7, 'k').disc(12.5, 4, 2, 'w').px(12, 1, 'R');
+      else p.rect(10, 7, 5, 5, 'r').px(14, 9, 'y');
+      p.disc(18.5, 0.5, 1.5, 'y'); // bocina
+    },
+  },
+  // Hombre orquesta: bombo a la espalda, platillos en las rodillas, trompeta.
+  orquesta: {
+    w: 20,
+    h: 22,
+    frames: 2,
+    paint: (p, f) => {
+      p.disc(10, 13, 7, 'w').ring(10, 13, 7, 'R').ring(10, 13, 5, 'R').px(10, 13, 'R'); // bombo
+      p.disc(10, 5, 3.5, 'w').rect(7, 0, 6, 2, 'v').px(10, 0, 'y');
+      p.px(9, 5, 'k').px(11, 5, 'k').rect(9, 7, 3, 1, 'R');
+      p.line(13, 6, 18, 4, 'y').disc(18.5, 4, 1.5, 'Y'); // trompeta
+      const sp = f === 1 ? 1 : 0;
+      p.ellipse(3, 18 - sp, 3, 1, 'y').ellipse(17, 18 - sp, 3, 1, 'y');
+      p.rect(7, 19, 2, 3, 'k').rect(11, 19, 2, 3, 'k');
+    },
+  },
+  // Dragón de papel: cabeza (0 derecha, 1 izquierda) y cuerpo de farolillos.
+  dragon: {
+    w: 18,
+    h: 14,
+    frames: 2,
+    paint: (p, f) => {
+      const flip = (x: number) => (f === 1 ? 17 - x : x);
+      p.ellipse(9, 7, 7, 5, 'R').ellipse(9, 9, 6, 2.5, 'y');
+      p.px(flip(12), 4, 'W').px(flip(12), 5, 'k').px(flip(9), 4, 'W').px(flip(9), 5, 'k');
+      p.line(flip(4), 2, flip(1), 0, 'y').line(flip(6), 2, flip(5), 0, 'y');
+      for (let x = 6; x <= 13; x += 2) p.px(flip(x), 11, 'W');
+      p.px(flip(16), 7, 'o').px(flip(17), 6, 'y');
+    },
+  },
+  dragon_cuerpo: {
+    w: 12,
+    h: 12,
+    frames: 2,
+    paint: (p, f) => {
+      p.disc(5.5, 5.5, 5, f ? 'y' : 'R').rect(1, 5, 10, 1, f ? 'R' : 'y');
+      p.px(4, 3, 'W').px(5, 0, 'k').px(5, 11, 'k');
+    },
+  },
 };

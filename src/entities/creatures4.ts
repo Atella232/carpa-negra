@@ -4,7 +4,9 @@ import type { GameScene } from '../scenes/GameScene';
 import { Enemy, EnemyOpts, anim } from './Enemy';
 import { addTether } from './tether';
 import { lob } from './Lob';
-import { Obstacle } from './props';
+import { DEPTH } from '../config';
+import { Obstacle, Fire } from './props';
+import { TimeTrail } from '../core/trail';
 
 /** Trapecista: se balancea; solo se le puede dar en lo bajo del arco. */
 export class Trapecista extends Enemy {
@@ -316,5 +318,221 @@ export class Barbuda extends Enemy {
       this.sc.spawnPickup('taco_boletos', this.x, this.y, { burst: true });
     }
     super.die();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nuevas del Acto IV
+// ---------------------------------------------------------------------------
+
+/**
+ * Coche de payasos: rueda en línea recta rebotando en las paredes. Cada poco
+ * frena, abre la puerta (aviso) y baja un payasito; lleva cuatro. Si lo
+ * rompes, salen de golpe los que queden: cuanto antes, mejor.
+ */
+export class CochePayasos extends Enemy {
+  dir = new Phaser.Math.Vector2(Math.random() < 0.5 ? 1 : -1, Math.random() < 0.5 ? 0.6 : -0.6).normalize();
+  inside = 4;
+  dropT = Phaser.Math.FloatBetween(2, 3);
+  stopT = 0;
+  t = 0;
+  protected think(dt: number): void {
+    this.t += dt;
+    if (this.stopT > 0) {
+      this.stopT -= dt;
+      this.setFrame(1);
+      if (this.stopT <= 0) this.dropClown();
+      return;
+    }
+    this.setFrame(0);
+    const b = this.body.blocked;
+    const tc = this.body.touching;
+    if ((b.left || tc.left) && this.dir.x < 0) this.dir.x *= -1;
+    if ((b.right || tc.right) && this.dir.x > 0) this.dir.x *= -1;
+    if ((b.up || tc.up) && this.dir.y < 0) this.dir.y *= -1;
+    if ((b.down || tc.down) && this.dir.y > 0) this.dir.y *= -1;
+    this.desired.set(this.dir.x * this.speed, this.dir.y * this.speed);
+    this.setFlipX(this.dir.x < 0);
+    this.dropT -= dt;
+    if (this.dropT <= 0 && this.inside > 0) {
+      this.dropT = 3.5;
+      this.stopT = 0.8;
+      this.windupFlash();
+      this.sc.snd('bocinazo');
+      this.sc.telegraph.marker(this.x, this.y + 12, 0.8, { owner: this, color: 0xf2a3b5 });
+    }
+  }
+  private dropClown(): void {
+    if (this.inside <= 0) return;
+    this.inside--;
+    const e = this.sc.spawn('payasito', this.x, Math.min(124, this.y + 12));
+    e.wake = 0.5;
+  }
+  die(): void {
+    if (this.dead) return;
+    const sc = this.sc;
+    for (let i = 0; i < this.inside; i++) {
+      const a = (i / Math.max(1, this.inside)) * Math.PI * 2;
+      const e = sc.spawn('payasito', Phaser.Math.Clamp(this.x + Math.cos(a) * 12, 28, 212), Phaser.Math.Clamp(this.y + Math.sin(a) * 10, 28, 116));
+      e.wake = 0.6;
+    }
+    this.inside = 0;
+    super.die();
+  }
+}
+
+/** Colores de aviso de cada instrumento. */
+const INSTRUMENTO = [
+  { name: 'bombo', color: 0xd4323f },
+  { name: 'platillos', color: 0xf2c14e },
+  { name: 'trompeta', color: 0x4f8fd1 },
+] as const;
+
+/**
+ * Hombre orquesta: anda despacio hacia ti y toca, siempre en el mismo orden y
+ * con 0,6 s de aviso de su color: bombo (rojo, anillo de 10), platillos
+ * (amarillo, dos abanicos a los lados) y trompeta (azul, tres balas rápidas).
+ */
+export class Orquesta extends Enemy {
+  timer = Phaser.Math.FloatBetween(1.6, 2.4);
+  windup = 0;
+  next = 0;
+  offset = false;
+  t = 0;
+  protected think(dt: number): void {
+    this.t += dt;
+    this.setFlipX(this.player.x < this.x);
+    if (this.windup > 0) {
+      this.windup -= dt;
+      this.setFrame(Math.floor(this.t * 8) % 2);
+      if (this.windup <= 0) this.tocar();
+      return;
+    }
+    this.setFrame(0);
+    if (this.distToPlayer() > 40) this.chase();
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 2.6;
+      this.windup = 0.6;
+      const ins = INSTRUMENTO[this.next];
+      this.setTint(ins.color);
+      this.sc.snd('aviso');
+      const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+      if (ins.name === 'bombo') this.sc.telegraph.circle(this.x, this.y, 20, 0.6, { owner: this, color: ins.color });
+      else if (ins.name === 'platillos') {
+        for (const s of [-1, 1]) {
+          const b = a + (s * Math.PI) / 2;
+          this.sc.telegraph.line(this.x, this.y, this.x + Math.cos(b) * 70, this.y + Math.sin(b) * 70, 0.6, { owner: this, color: ins.color, w: 10 });
+        }
+      } else this.sc.telegraph.line(this.x, this.y, this.x + Math.cos(a) * 90, this.y + Math.sin(a) * 90, 0.6, { owner: this, color: ins.color, w: 6 });
+    }
+  }
+  private tocar(): void {
+    this.restoreTint();
+    const ins = INSTRUMENTO[this.next];
+    this.next = (this.next + 1) % INSTRUMENTO.length;
+    const a = Math.atan2(this.player.y - 6 - this.y, this.player.x - this.x);
+    if (ins.name === 'bombo') {
+      this.ring(10, 75, {}, this.offset ? Math.PI / 10 : 0);
+      this.offset = !this.offset;
+      this.sc.snd('bombo');
+    } else if (ins.name === 'platillos') {
+      this.fan(4, 0.25, 95, {}, a + Math.PI / 2);
+      this.fan(4, 0.25, 95, {}, a - Math.PI / 2);
+      this.sc.snd('platillos');
+    } else {
+      this.sc.snd('trompeta');
+      for (let i = 0; i < 3; i++) this.after(i * 0.15, () => this.fan(1, 0, 130, {}, a));
+    }
+  }
+}
+
+/** Segmento del dragón: lo mueve la cabeza; los golpes le llegan a ella (60 %). */
+export class DragonSegmento extends Enemy {
+  constructor(scene: GameScene, x: number, y: number, public head: Dragon, public index: number) {
+    super(scene, x, y, 'dragon_cuerpo', { hp: 9999, speed: 0, flying: true, body: { w: 10, h: 10, dy: 0 }, name: 'Dragón de papel', fixedHp: true, noSmoke: true });
+    this.countsForClear = false;
+    this.targetable = false;
+    this.wake = 0.7;
+    this.setFrame(index % 2);
+  }
+  protected think(): void {
+    /* lo mueve la cabeza */
+  }
+  follow(trail: TimeTrail): void {
+    const p = trail.at(((this.index + 1) * 9) / 60);
+    if (!p) return;
+    this.setPosition(p.x, p.y + 2);
+    this.body.reset(p.x, p.y + 2);
+    this.setDepth(DEPTH.world + p.y - 1);
+  }
+  damage(amount: number, from: { x: number; y: number } | null, knockback = 0, silent = false): boolean {
+    if (this.head.dead) return false;
+    this.setTintFill(0xffffff);
+    this.flashT = 0.06;
+    return this.head.damage(amount * 0.6, from, knockback, silent);
+  }
+}
+
+/**
+ * Dragón de papel: cabeza y cuatro farolillos que la siguen. Serpentea hacia
+ * ti y la cola va dejando fuego (como mucho ocho a la vez). No dispara: su
+ * peligro es el suelo, y el fuego se puede apagar a disparos.
+ */
+export class Dragon extends Enemy {
+  segments: DragonSegmento[] = [];
+  trail = new TimeTrail(1.2);
+  heading = Math.random() * Math.PI * 2;
+  fireT = 1.1;
+  t = Math.random() * 5;
+  private fires: Fire[] = [];
+  constructor(scene: GameScene, x: number, y: number, texture: string, o: EnemyOpts) {
+    super(scene, x, y, texture, o);
+    for (let i = 0; i < 4; i++) this.segments.push(new DragonSegmento(scene, x, y, this, i));
+  }
+  protected think(dt: number): void {
+    this.t += dt;
+    const target = Math.atan2(this.player.y - this.y, this.player.x - this.x) + Math.sin(this.t * 2) * 0.8;
+    const diff = Phaser.Math.Angle.Wrap(target - this.heading);
+    this.heading += Phaser.Math.Clamp(diff, -2.4 * dt, 2.4 * dt);
+    const b = this.body.blocked;
+    if (b.left || b.right) this.heading = Math.PI - this.heading;
+    if (b.up || b.down) this.heading = -this.heading;
+    this.desired.set(Math.cos(this.heading) * this.speed, Math.sin(this.heading) * this.speed);
+    this.setFrame(Math.cos(this.heading) < 0 ? 1 : 0);
+    this.fireT -= dt;
+    if (this.fireT <= 0) {
+      this.fireT = 1.1;
+      this.fires = this.fires.filter((f) => f.active);
+      const tail = this.segments[this.segments.length - 1];
+      if (tail && this.fires.length < 8) {
+        const before = this.sc.hazards.length;
+        this.sc.spawnFire(tail.x, tail.y + 4, 6);
+        if (this.sc.hazards.length > before) this.fires.push(this.sc.hazards[this.sc.hazards.length - 1]);
+      }
+    }
+  }
+  preUpdate(time: number, delta: number): void {
+    super.preUpdate(time, delta);
+    if (this.dead || !this.active) return;
+    this.trail.push(this.x, this.y, Math.min(0.05, delta / 1000));
+    for (const s of this.segments) s.follow(this.trail);
+  }
+  die(): void {
+    if (this.dead) return;
+    for (const s of this.segments) {
+      if (s.active) {
+        this.sc.confetti(s.x, s.y, 4);
+        s.dead = true;
+        s.destroy();
+      }
+    }
+    this.segments = [];
+    super.die();
+  }
+  destroy(fromScene?: boolean): void {
+    for (const s of this.segments) if (s.active) s.destroy();
+    this.segments = [];
+    super.destroy(fromScene);
   }
 }

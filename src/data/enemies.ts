@@ -47,7 +47,11 @@ export type EnemyKind =
   // Nuevas del Acto III
   | 'automata'
   | 'sombra'
-  | 'hipnotizador';
+  | 'hipnotizador'
+  // Nuevas del Acto IV
+  | 'cochePayasos'
+  | 'orquesta'
+  | 'dragon';
 
 export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente' | 'reflejo' | 'fortuna' | 'maestro';
 
@@ -123,6 +127,10 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   automata: { kind: 'automata', name: 'Autómata de feria', hp: 18, speed: 0, texture: 'automata', body: { w: 10, h: 10, dy: 5 } },
   sombra: { kind: 'sombra', name: 'Sombra', hp: 14, speed: 90, flying: true, texture: 'sombra_enemiga', body: { w: 9, h: 10, dy: 3 } },
   hipnotizador: { kind: 'hipnotizador', name: 'Hipnotizador', hp: 18, speed: 28, texture: 'hipnotizador', body: { w: 10, h: 12, dy: 5 } },
+  // --- Nuevas del Acto IV ---
+  cochePayasos: { kind: 'cochePayasos', name: 'Coche de payasos', hp: 36, speed: 70, texture: 'coche_payasos', body: { w: 22, h: 10, dy: 4 } },
+  orquesta: { kind: 'orquesta', name: 'Hombre orquesta', hp: 34, speed: 18, texture: 'orquesta', body: { w: 12, h: 12, dy: 5 } },
+  dragon: { kind: 'dragon', name: 'Dragón de papel', hp: 40, speed: 46, flying: true, texture: 'dragon', body: { w: 14, h: 10, dy: 0 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -168,6 +176,10 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   U: 'automata',
   W: 'sombra',
   Y: 'hipnotizador',
+  // Nuevas del Acto IV
+  V: 'cochePayasos',
+  R: 'orquesta',
+  Z: 'dragon',
 };
 
 /**
@@ -190,6 +202,8 @@ export const THREAT: Record<EnemyKind, number> = {
   foca: 3, titi: 1, faquir: 3,
   // Nuevas del Acto III
   automata: 3, sombra: 3, hipnotizador: 3,
+  // Nuevas del Acto IV
+  cochePayasos: 5, orquesta: 5, dragon: 5,
 };
 
 /** Color de los restos al morir. */
@@ -203,6 +217,7 @@ export const GIB_COLOR: Partial<Record<string, number>> = {
   globero: 0x2b4f7a, globoSuelto: 0x7a4a8c, malabarista: 0xe8743b, perrito: 0xc2bccb,
   foca: 0x55505e, titi: 0xa8673b, faquir: 0xe8743b,
   automata: 0xa3a0ad, sombra_enemiga: 0x1d1424, hipnotizador: 0x7a4a8c,
+  coche_payasos: 0xd4323f, orquesta: 0xefe6d8, dragon: 0xf2c14e,
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';
