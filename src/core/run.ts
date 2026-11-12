@@ -4,7 +4,8 @@ import { generateFloor, roomDoors, Dir, FloorLayout, RoomType, DIR_VEC } from '.
 import { ItemPools, PoolName } from './itempool';
 import { StatMods } from './stats';
 import { ITEMS } from '../data/items';
-import { actDef, ACTS } from '../data/acts';
+import { actDef, ACTS, SLOT_CHARS } from '../data/acts';
+import type { RoomTemplate } from '../data/rooms/template';
 import { BossKind } from '../data/enemies';
 import { GOLOSINA_COLORS, GOLOSINA_EFFECTS, GolosinaColor, GolosinaEffect } from '../data/golosinas';
 import { characterDef } from '../data/characters';
@@ -167,24 +168,29 @@ export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layo
   const mapRng = act === 1 ? streams.get('mapa') : streams.get('mapa', String(act));
   const layout = generateFloor(mapRng, {
     minNormal: def.minNormal, maxNormal: def.maxNormal,
-    required: def.specials.required, optional: def.specials.optional,
+    required: def.specials.required, extras: def.specials.extras,
+    extraCount: def.specials.extraCount, superSecret: def.specials.superSecret,
   });
-  const templates = def.templates;
 
   const rooms = new Map<string, RoomState>();
+  const used = new Set<string>();
   for (const r of layout.rooms) {
     const room = newRoom(r.x, r.y, r.type, r.dist, roomDoors(layout, r.x, r.y));
     if (r.type === 'normal') {
       // Más dificultad cuanto más lejos del inicio.
       const allowed = r.dist <= 1 ? [0, 1, 1, 2] : r.dist <= 3 ? [1, 2, 2, 3] : [2, 3, 3];
       const want = mapRng.pick(allowed);
-      const options = templates.filter((t) => t.diff === want);
-      const tpl = mapRng.pick(options.length ? options : templates);
+      const tpl = mapRng.pick(pickableTemplates(def.templates, want, used));
+      used.add(tpl.id);
       room.templateId = tpl.id;
       room.flipX = mapRng.chance(0.5);
       room.flipY = mapRng.chance(0.5);
+      // Comodines: se sortean siempre (aunque la plantilla no los use) para que
+      // el resto del mapa no dependa de qué plantilla ha salido.
+      for (const ch of SLOT_CHARS) room.data[`slot${ch}`] = mapRng.pick(def.slots[ch]);
       if (tpl.diff === 0) room.cleared = true;
     }
+    if (r.tag === 'super') room.data.super = true;
     rooms.set(roomKey(r.x, r.y), room);
   }
   rooms.get(roomKey(layout.start.x, layout.start.y))!.visited = true;
@@ -196,6 +202,23 @@ export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layo
     boss,
     cur: { ...layout.start },
   };
+}
+
+/**
+ * Plantillas que se pueden elegir sin repetir en el acto: las de la dificultad
+ * pedida que no han salido; si no queda ninguna, las de dificultad vecina;
+ * luego cualquiera que no haya salido; y si ya han salido todas, cualquiera.
+ */
+export function pickableTemplates(all: readonly RoomTemplate[], diff: number, used: ReadonlySet<string>): readonly RoomTemplate[] {
+  const fresh = all.filter((t) => !used.has(t.id));
+  const exact = fresh.filter((t) => t.diff === diff);
+  if (exact.length) return exact;
+  const near = fresh.filter((t) => Math.abs(t.diff - diff) === 1 && t.diff > 0);
+  if (near.length) return near;
+  const any = fresh.filter((t) => t.diff > 0);
+  if (any.length) return any;
+  const same = all.filter((t) => t.diff === diff);
+  return same.length ? same : all;
 }
 
 export interface RunOptions {
@@ -284,6 +307,12 @@ export interface ActItems {
   secretItem: boolean;
   jefe: string[];
   contrato: string[];
+  /** Segundo camerino (si sale como sala extra). */
+  camerino2?: string[];
+  /** Premio final de la Cama de Clavos. */
+  clavos?: string[];
+  /** Objeto de la trastienda (segunda secreta). */
+  trastienda?: string[];
 }
 
 /**
@@ -315,18 +344,30 @@ export function prerollAllActs(run: RunState): void {
       contrato: def.contract ? take('contrato', 2) : [],
     };
   }
+  // Después de los de siempre, para no cambiar qué objetos daban ya las semillas.
+  for (const def of ACTS) {
+    const it = run.preItems[def.n];
+    it.camerino2 = take('camerino', 1);
+    it.clavos = take('camerino', 1);
+    it.trastienda = take('secreta', 1);
+  }
 }
 
 /** Reparte los objetos sorteados del acto actual entre sus salas (`room.data.pre0`...). */
 export function assignPreItems(run: RunState): void {
   const it = run.preItems?.[run.act];
   if (!it) return;
-  const put = (room: RoomState, ids: string[]) => ids.forEach((id, i) => (room.data[`pre${i}`] = id));
-  for (const room of run.rooms.values()) {
-    if (room.type === 'camerino') put(room, it.camerino);
+  const put = (room: RoomState, ids: string[] | undefined) => (ids ?? []).forEach((id, i) => (room.data[`pre${i}`] = id));
+  let camerinos = 0;
+  // Orden estable (por posición) para que el segundo camerino sea siempre el mismo.
+  const ordered = [...run.rooms.values()].sort((a, b) => a.y - b.y || a.x - b.x);
+  for (const room of ordered) {
+    if (room.type === 'camerino') put(room, camerinos++ === 0 ? it.camerino : it.camerino2);
     else if (room.type === 'reto') put(room, it.reto);
     else if (room.type === 'puesto') put(room, it.puesto);
     else if (room.type === 'jefe') put(room, it.jefe);
+    else if (room.type === 'clavos') put(room, it.clavos);
+    else if (room.type === 'secreta' && room.data.super) put(room, it.trastienda);
     else if (room.type === 'secreta') {
       room.data.secretItem = it.secretItem;
       put(room, it.secreta);

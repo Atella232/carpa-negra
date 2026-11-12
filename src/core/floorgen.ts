@@ -14,7 +14,11 @@ export type RoomType =
   | 'contrato'
   // Actos III y IV
   | 'pitonisa'
-  | 'reto';
+  | 'reto'
+  // Salas especiales que pueden salir en cualquier acto
+  | 'almacen'
+  | 'clavos'
+  | 'curandero';
 
 export type Dir = 'N' | 'S' | 'E' | 'W';
 export const DIRS: Dir[] = ['N', 'S', 'E', 'W'];
@@ -32,6 +36,8 @@ export interface FloorRoom {
   type: RoomType;
   /** Distancia (en salas) desde la sala de inicio. */
   dist: number;
+  /** 'super': la segunda sala secreta (la trastienda). */
+  tag?: 'super';
 }
 
 export interface FloorLayout {
@@ -48,8 +54,12 @@ export interface FloorGenOptions {
   maxNormal?: number;
   /** Salas especiales obligatorias (en callejones). */
   required?: RoomType[];
-  /** Salas especiales opcionales, se colocan si hay callejones libres. */
-  optional?: RoomType[];
+  /** Bolsa de salas especiales extra, con pesos: se sortean sin repetir. */
+  extras?: { value: RoomType; weight: number }[];
+  /** Cuántas extras (mínimo y máximo). */
+  extraCount?: [number, number];
+  /** Probabilidad de una segunda sala secreta (la trastienda). */
+  superSecret?: number;
 }
 
 const DEFAULTS: Required<FloorGenOptions> = {
@@ -58,7 +68,12 @@ const DEFAULTS: Required<FloorGenOptions> = {
   minNormal: 8,
   maxNormal: 10,
   required: ['jefe', 'camerino', 'puesto'],
-  optional: ['diana', 'barraca'],
+  extras: [
+    { value: 'diana', weight: 1 },
+    { value: 'barraca', weight: 1 },
+  ],
+  extraCount: [2, 2],
+  superSecret: 0,
 };
 
 const key = (x: number, y: number) => `${x},${y}`;
@@ -83,9 +98,11 @@ function tryGenerate(
   attempt: number,
 ): FloorLayout | null {
   const start = { x: Math.floor(o.w / 2), y: Math.floor(o.h / 2) };
-  // Tras muchos intentos se relajan las opcionales.
-  const optional = attempt > 600 ? [] : attempt > 300 ? o.optional.slice(0, 1) : o.optional;
-  const specials = o.required.length + optional.length;
+  // Cuántas salas extra; tras muchos intentos se piden menos.
+  let want = rng.int(o.extraCount[0], o.extraCount[1]);
+  if (attempt > 600) want = 0;
+  else if (attempt > 300) want = Math.min(want, 1);
+  const specials = o.required.length + want;
   const normals = rng.int(o.minNormal, o.maxNormal);
   const target = 1 + normals + specials;
 
@@ -135,7 +152,15 @@ function tryGenerate(
   types.set(key(boss.x, boss.y), 'jefe');
 
   const rest = rng.shuffle(deadEnds.slice(1));
-  const toPlace = [...o.required.filter((t) => t !== 'jefe'), ...optional];
+  // Las extras se sacan de la bolsa sin repetir (según su peso).
+  const bag = o.extras.slice();
+  const extras: RoomType[] = [];
+  for (let i = 0; i < want && bag.length; i++) {
+    const t = rng.weighted(bag);
+    extras.push(t);
+    bag.splice(bag.findIndex((b) => b.value === t), 1);
+  }
+  const toPlace = [...o.required.filter((t) => t !== 'jefe'), ...extras];
   for (const t of toPlace) {
     const c = rest.shift();
     if (!c) return null;
@@ -154,7 +179,45 @@ function tryGenerate(
   }));
   rooms.push({ x: secret.x, y: secret.y, dist: -1, type: 'secreta' });
 
+  // A veces, una segunda secreta (la trastienda): pegada a una sola sala normal.
+  if (o.superSecret > 0 && rng.chance(o.superSecret)) {
+    const sup = placeSuperSecret(rng, o, occ, types, secret);
+    if (sup) rooms.push({ x: sup.x, y: sup.y, dist: -1, type: 'secreta', tag: 'super' });
+  }
+
   return { w: o.w, h: o.h, rooms, start };
+}
+
+/**
+ * Celda vacía que toca exactamente una sala, y que esa sala sea normal (ni el
+ * jefe ni la otra secreta al lado). Se elige la que cuelga de la sala normal
+ * más lejana del inicio: la trastienda premia explorar.
+ */
+function placeSuperSecret(
+  rng: Rng,
+  o: Required<FloorGenOptions>,
+  occ: Map<string, { x: number; y: number; dist: number }>,
+  types: Map<string, RoomType>,
+  secret: { x: number; y: number },
+): { x: number; y: number } | null {
+  const isSecret = (x: number, y: number) => x === secret.x && y === secret.y;
+  let best: { x: number; y: number }[] = [];
+  let bestDist = -1;
+  for (let y = 0; y < o.h; y++) {
+    for (let x = 0; x < o.w; x++) {
+      if (occ.has(key(x, y)) || isSecret(x, y)) continue;
+      const adj = neighbors(x, y).filter((n) => occ.has(key(n.x, n.y)) || isSecret(n.x, n.y));
+      if (adj.length !== 1) continue;
+      const n = adj[0];
+      if (isSecret(n.x, n.y) || types.get(key(n.x, n.y)) !== 'normal') continue;
+      const d = occ.get(key(n.x, n.y))!.dist;
+      if (d > bestDist) {
+        bestDist = d;
+        best = [{ x, y }];
+      } else if (d === bestDist) best.push({ x, y });
+    }
+  }
+  return best.length ? rng.pick(best) : null;
 }
 
 function placeSecret(

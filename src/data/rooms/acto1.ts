@@ -5,6 +5,8 @@
 //   M  bloque de metal  T  tachuelas     O  foso     F  brasero
 //   m mimo  v polilla  o mono  k lanzacuchillos  j caja sorpresa
 //   u monociclista  f tragafuegos  g pulga
+// Comodines (la criatura se sortea para cada sala entre las de su lista, en acts.ts):
+//   5 débil   6 cuerpo a cuerpo   7 a distancia
 import type { RoomTemplate } from './template';
 export type { RoomTemplate } from './template';
 export { ROOM_COLS, ROOM_ROWS, flipRows, DOOR_CELLS } from './template';
@@ -39,7 +41,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
     rows: [
       '.............',
       '.CCCC...CCCC.',
-      '.....m.m.....',
+      '.....5.5.....',
       '.............',
       '.....k.......',
       '.CCCC...CCCC.',
@@ -66,7 +68,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '...Ck...kC...',
       '.............',
       '...C.....C...',
-      '...C..m..C...',
+      '...C..5..C...',
       '.............',
     ],
   },
@@ -78,7 +80,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '.....T.T.....',
       '......j......',
       '.....T.T.....',
-      '.m.........m.',
+      '.5.........5.',
       '.............',
     ],
   },
@@ -151,7 +153,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '.CCC.....CCC.',
       '.............',
       '.C.CCC.CCC.C.',
-      '....m........',
+      '....5........',
     ],
   },
   {
@@ -184,7 +186,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '.............',
       '.TTTTT.TTTTT.',
       '.............',
-      '..u.......u..',
+      '..6.......6..',
       '.............',
       '.TTTTT.TTTTT.',
       '.............',
@@ -220,7 +222,7 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '.............',
       '.X.........C.',
       '.............',
-      '....m...m....',
+      '....5...5....',
       '.............',
       '.C.........C.',
       '.............',
@@ -231,9 +233,9 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
     rows: [
       '.............',
       '.C.........C.',
-      '...o.....m...',
+      '...o.....5...',
       '.............',
-      '...m.....o...',
+      '...5.....o...',
       '.C.........C.',
       '.............',
     ],

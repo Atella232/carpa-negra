@@ -10,8 +10,8 @@ import { ACT3_SPRITES } from '../src/art/sprites/act3';
 import { ACT4_SPRITES } from '../src/art/sprites/act4';
 const ITEM_ICONS = { ...ICONS1, ...ACT2_SPRITES, ...ACT3_SPRITES, ...ACT4_SPRITES };
 
-const WALKABLE = new Set(['.', 'T', ...Object.keys(TEMPLATE_ENEMY)]);
-const KNOWN = new Set(['.', 'T', 'C', 'X', 'P', 'M', 'O', 'F', 'J', 'H', ...Object.keys(TEMPLATE_ENEMY)]);
+const WALKABLE = new Set(['.', 'T', ...Object.keys(TEMPLATE_ENEMY), '5', '6', '7']);
+const KNOWN = new Set(['.', 'T', 'C', 'X', 'P', 'M', 'O', 'F', 'J', 'H', ...Object.keys(TEMPLATE_ENEMY), '5', '6', '7']);
 
 function reachableDoors(rows: string[]): boolean {
   const start = DOOR_CELLS.N;
@@ -120,6 +120,27 @@ describe('actos', () => {
       const ids = new Set(ACTO2_ROOMS.map((t) => t.id));
       for (const r of run.rooms.values()) if (r.type === 'normal') expect(ids.has(r.templateId!)).toBe(true);
       expect([...run.rooms.values()].filter((r) => r.type === 'normal').length).toBeGreaterThanOrEqual(9);
+    }
+  });
+});
+
+describe('variedad de salas', () => {
+  it('no se repite ninguna plantilla dentro de un acto', () => {
+    for (let i = 0; i < 200; i++) {
+      const run = createRun(`REPE${i}`);
+      for (let a = 1; a <= 4; a++) {
+        if (a > 1) advanceAct(run);
+        const ids = [...run.rooms.values()].filter((r) => r.type === 'normal').map((r) => r.templateId);
+        expect(new Set(ids).size, `semilla REPE${i}, acto ${a}`).toBe(ids.length);
+      }
+    }
+  });
+
+  it('cada sala normal tiene sus comodines sorteados', () => {
+    const run = createRun('COMODIN');
+    for (const r of run.rooms.values()) {
+      if (r.type !== 'normal') continue;
+      for (const ch of ['5', '6', '7']) expect(typeof r.data[`slot${ch}`]).toBe('string');
     }
   });
 });

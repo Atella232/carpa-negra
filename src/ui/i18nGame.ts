@@ -103,6 +103,10 @@ export const EN_GAME: Record<string, string> = {
   // --- Salas y carteles del suelo ---
   'Camerino': 'Dressing Room', 'Puesto de feria': 'Fair Stall', 'Entre bastidores': 'Backstage',
   'Gabinete de la Pitonisa': "Fortune Teller's Booth", 'Número de riesgo': 'Daredevil Act',
+  'Trastienda': 'Back Room', 'Almacén de atrezo': 'Prop Storeroom', 'La Cama de Clavos': 'The Bed of Nails',
+  'Carromato del Curandero': "The Healer's Wagon", 'Gratis': 'Free', 'Túmbate un segundo': 'Lie down for a second',
+  'El faquir ya no quiere verte': "The fakir doesn't want to see you anymore",
+  'Estás muy débil': "You're too weak", 'El faquir no te deja tumbarte': "The fakir won't let you lie down",
   'Ponte en la estrella': 'Stand on the star', 'Firma aquí. Letra pequeña.': 'Sign here. Fine print.',
   'Cerrado por defunción': 'Closed due to death', 'Si lo coges, empieza el número': 'Take it and the act begins',
   '¿Te la pones?': 'Will you wear it?', 'Los globos rojos cuentan para El Maestro': 'Red balloons count for the Ringmaster',

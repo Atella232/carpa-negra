@@ -49,7 +49,7 @@ export function installDebug(sc: GameScene): void {
         for (let x = 0; x < L.w; x++) {
           const r = sc.run.rooms.get(roomKey(x, y));
           const ch: Partial<Record<RoomType, string>> = {
-            inicio: 'I', normal: '#', jefe: 'J', camerino: 'C', puesto: 'P', diana: 'D', barraca: 'B', secreta: 'S',
+            inicio: 'I', normal: '#', jefe: 'J', camerino: 'C', puesto: 'P', diana: 'D', barraca: 'B', secreta: 'S', almacen: 'A', clavos: 'K', curandero: 'U',
             pitonisa: 'F', reto: 'R',
           };
           const cur = sc.run.cur.x === x && sc.run.cur.y === y;

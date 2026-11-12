@@ -83,3 +83,47 @@ describe('generateFloor', () => {
     expect(both).toBeGreaterThan(270);
   });
 });
+
+describe('salas especiales sorteadas', () => {
+  const extras = [
+    { value: 'diana' as const, weight: 3 },
+    { value: 'barraca' as const, weight: 3 },
+    { value: 'almacen' as const, weight: 3 },
+    { value: 'clavos' as const, weight: 2 },
+    { value: 'curandero' as const, weight: 1 },
+  ];
+
+  it('saca entre el mínimo y el máximo, sin repetir, y varían', () => {
+    const counts = new Set<number>();
+    const kinds = new Set<string>();
+    for (let i = 0; i < 500; i++) {
+      const l = generateFloor(new Rng(hashString(`e${i}`)), { extras, extraCount: [2, 3], minNormal: 9, maxNormal: 11 });
+      const got = l.rooms.map((r) => r.type).filter((t) => extras.some((e) => e.value === t));
+      expect(new Set(got).size).toBe(got.length);
+      expect(got.length).toBeGreaterThanOrEqual(2);
+      expect(got.length).toBeLessThanOrEqual(3);
+      counts.add(got.length);
+      got.forEach((t) => kinds.add(t));
+    }
+    expect([...counts].sort()).toEqual([2, 3]);
+    expect(kinds.size).toBe(extras.length);
+  });
+
+  it('la trastienda toca exactamente una sala normal y no toca al jefe', () => {
+    let found = 0;
+    for (let i = 0; i < 500; i++) {
+      const l = generateFloor(new Rng(hashString(`t${i}`)), { extras, extraCount: [2, 3], superSecret: 1, minNormal: 9, maxNormal: 11 });
+      const sup = l.rooms.filter((r) => r.tag === 'super');
+      expect(sup.length).toBeLessThanOrEqual(1);
+      if (!sup.length) continue;
+      found++;
+      const s = sup[0];
+      const adj = l.rooms.filter((r) => neighbors(s.x, s.y).some((n) => n.x === r.x && n.y === r.y));
+      expect(adj.length).toBe(1);
+      expect(adj[0].type).toBe('normal');
+      expect(roomDoors(l, s.x, s.y).length).toBe(1);
+    }
+    // Casi siempre hay sitio para ella.
+    expect(found).toBeGreaterThan(450);
+  });
+});

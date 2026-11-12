@@ -34,11 +34,21 @@ describe('cuatro actos', () => {
       for (let i = 0; i < 1000; i++) {
         const f = generateFloor(new Rng(i * 7919 + def.n), {
           minNormal: def.minNormal, maxNormal: def.maxNormal,
-          required: def.specials.required, optional: def.specials.optional,
+          required: def.specials.required, extras: def.specials.extras,
+          extraCount: def.specials.extraCount, superSecret: def.specials.superSecret,
         });
         const types = f.rooms.map((r) => r.type);
         for (const t of def.specials.required) expect(types).toContain(t);
-        expect(types.filter((t) => t === 'secreta').length).toBe(1);
+        const secrets = f.rooms.filter((r) => r.type === 'secreta');
+        expect(secrets.length).toBeGreaterThanOrEqual(1);
+        expect(secrets.length).toBeLessThanOrEqual(2);
+        // Extras: las de la bolsa, sin repetir (el camerino puede ser el segundo).
+        const extras = types.filter((t) => def.specials.extras.some((e) => e.value === t) && !def.specials.required.includes(t));
+        expect(new Set(extras).size).toBe(extras.length);
+        const camerinos = types.filter((t) => t === 'camerino').length;
+        expect(camerinos).toBeLessThanOrEqual(2);
+        const total = extras.length + camerinos - 1;
+        expect(total).toBeLessThanOrEqual(def.specials.extraCount[1]);
       }
     }
   });

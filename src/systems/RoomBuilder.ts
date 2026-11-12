@@ -10,11 +10,11 @@ import { TILES } from '../data/tiles';
 import { safeSpawns } from '../core/safeEntry';
 import { buildTile } from './tiles';
 import { spawnBoss } from '../entities/bossRegistry';
-import { actDef, findTemplate } from '../data/acts';
+import { actDef, findTemplate, creatureAt, isCreatureChar } from '../data/acts';
 import { BOSS_NAMES, BOSS_TAGLINES } from '../data/enemies';
 import { Champion, EnemyKind } from '../data/enemies';
 import { bakeRoomBackground, FloorStyle, DoorStyle } from '../art/sprites/room';
-import { txt } from '../ui/text';
+import { txt, setTxt } from '../ui/text';
 import { item } from '../data/items';
 import { RULETA } from '../data/loot';
 import { Controls } from './Controls';
@@ -116,8 +116,9 @@ export function rebuildDoors(sc: GameScene): void {
     const isContract = room.type === 'jefe' && sc.run.contractOpen && dir === contractDoorDir(sc.run);
     const target = isContract ? sc.run.contract : neighborRoom(sc.run, room, dir);
     const style = doorStyle(room, target, isContract);
-    // El puesto y el número de riesgo se abren con llave.
-    const locked = !!target && (target.type === 'puesto' || target.type === 'reto') && !target.unlocked && room.type !== target.type;
+    // El puesto, el número de riesgo y el almacén se abren con llave.
+    const withKey = (t: RoomState['type']) => t === 'puesto' || t === 'reto' || t === 'almacen';
+    const locked = !!target && withKey(target.type) && !target.unlocked && room.type !== target.type;
     const isSecret = style === 'secreta';
     const open = (room.cleared || isSecret) && !locked;
     const info: DoorInfo = { dir, open, locked, target };
@@ -151,7 +152,7 @@ function doorStyle(room: RoomState, target: RoomState | undefined, contract: boo
   if (!target) return 'normal';
   if (target.type === 'secreta' || room.type === 'secreta') return 'secreta';
   if (room.type === 'jefe' || target.type === 'jefe') return 'jefe';
-  const special: RoomState['type'][] = ['camerino', 'puesto', 'diana', 'barraca', 'pitonisa', 'reto'];
+  const special: RoomState['type'][] = ['camerino', 'puesto', 'diana', 'barraca', 'pitonisa', 'reto', 'almacen', 'clavos', 'curandero'];
   if (special.includes(target.type)) return target.type as DoorStyle;
   if (special.includes(room.type)) return room.type as DoorStyle;
   return 'normal';
@@ -180,8 +181,8 @@ function buildTemplate(sc: GameScene, room: RoomState): void {
   }
   // Criaturas, apartadas de la puerta por la que entras (entrada segura).
   if (!room.cleared && wave === 0) {
-    for (const sp of safeSpawns(rows, (ch) => !!def.legend[ch], sc.entryDir)) {
-      sc.spawn(def.legend[sp.ch], tileX(sp.c), tileY(sp.r), rollChampion(sc));
+    for (const sp of safeSpawns(rows, (ch) => isCreatureChar(def, ch), sc.entryDir)) {
+      sc.spawn(creatureAt(def, room.data, sp.ch)!, tileX(sp.c), tileY(sp.r), rollChampion(sc));
     }
   }
   if (room.cleared) return;
@@ -211,7 +212,12 @@ function spawnWave(sc: GameScene, room: RoomState, layer: string[], delay: numbe
   const def = actDef(sc.run.act);
   const rows = flipRows(layer, room.flipX, room.flipY);
   const spots: { x: number; y: number; kind: EnemyKind }[] = [];
-  rows.forEach((row, r) => [...row].forEach((ch, c) => def.legend[ch] && spots.push({ x: tileX(c), y: tileY(r), kind: def.legend[ch] })));
+  rows.forEach((row, r) =>
+    [...row].forEach((ch, c) => {
+      const kind = creatureAt(def, room.data, ch);
+      if (kind) spots.push({ x: tileX(c), y: tileY(r), kind });
+    }),
+  );
   for (const sp of spots) if (delay > 0) sc.telegraph.marker(sp.x, sp.y, delay, { color: 0xf2c14e });
   const go = () => {
     for (const sp of spots) {
@@ -273,6 +279,16 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       break;
     }
     case 'secreta':
+      // La trastienda (segunda secreta): premio seguro.
+      if (room.data.super) {
+        sc.floorText(cx, 22, 'Trastienda', 0xc9b3ef, 0.6);
+        if (first) {
+          sc.addPedestal(cx, tileY(3), sc.preItem(room, 0, 'secreta'));
+          sc.spawnPickup('globo_plata', tileX(3), tileY(4));
+          sc.spawnPickup('taco_boletos', tileX(9), tileY(4));
+        }
+        break;
+      }
       sc.floorText(cx, 22, 'Entre bastidores', 0xc9b3ef, 0.5);
       if (first) {
         const hasItem = room.data.secretItem !== undefined ? !!room.data.secretItem : sc.rngItems.chance(0.6);
@@ -297,6 +313,27 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       break;
     case 'barraca':
       buildBarraca(sc, room);
+      break;
+    case 'almacen':
+      sc.floorText(cx, 22, 'Almacén de atrezo', 0xa8673b, 0.7);
+      if (first) {
+        sc.spawnPickup('cofre', tileX(4), tileY(3));
+        sc.spawnPickup('cofre_candado', tileX(6), tileY(3));
+        sc.spawnPickup('cofre', tileX(8), tileY(3));
+        if (sc.rngLoot.chance(0.3)) sc.spawnPickup('taco_boletos', cx, tileY(5));
+      }
+      break;
+    case 'clavos':
+      buildClavos(sc, room);
+      break;
+    case 'curandero':
+      sc.floorText(cx, 22, 'Carromato del Curandero', 0x7fd1b9, 0.7);
+      if (first) {
+        sc.spawnPickup('globo', tileX(3), tileY(3) + 4);
+        sc.spawnPickup('globo', tileX(6), tileY(3) + 4, { price: sc.price(4) });
+        sc.spawnPickup('globo_plata', tileX(9), tileY(3) + 4, { price: sc.price(6) });
+        sc.floorText(tileX(3), tileY(4) + 4, 'Gratis', 0x7fd1b9, 0.6);
+      }
       break;
     case 'jefe':
       if (!room.cleared) {
@@ -419,6 +456,54 @@ function buildPitonisa(sc: GameScene, room: RoomState): void {
     sc.snd('carta');
     sc.time.delayedCall(400, () => npc.setFrame(0));
     r.run();
+  });
+}
+
+/**
+ * La Cama de Clavos: quedarse 1 s tumbado encima cuesta medio globo y da un
+ * premio cada vez mejor (boletos, cofre y, la tercera, un objeto). Luego, nada.
+ */
+function buildClavos(sc: GameScene, room: RoomState): void {
+  const cx = ROOM_W / 2,
+    cy = tileY(3);
+  const bed = sc.add.image(cx, cy, 'cama_clavos').setDepth(DEPTH.decal + 1);
+  sc.roomObjs.push(bed);
+  sc.floorText(cx, 22, 'La Cama de Clavos', 0xa3a0ad, 0.7);
+  const uses = () => (room.data.uses as number) ?? 0;
+  const done = () => uses() >= 3;
+  const hint = txt(sc, cx, tileY(5) + 4, done() ? 'El faquir ya no quiere verte' : 'Túmbate un segundo', 0xa3a0ad, 'center').setDepth(DEPTH.decal);
+  sc.roomObjs.push(hint);
+  if (done()) bed.setTint(0x777777);
+  let on = 0;
+  sc.roomUpdate.push((dt) => {
+    if (done()) return;
+    const p = sc.player;
+    const lying = Math.abs(p.x - cx) < 22 && Math.abs(p.y - cy) < 8;
+    on = lying ? on + dt : 0;
+    bed.setTint(lying ? 0xffd0d0 : 0xffffff);
+    if (on < 1) return;
+    on = -1.2; // un respiro antes de la siguiente vez
+    const st = sc.run.player;
+    if (st.hp + st.shield <= 1) {
+      sc.banner('Estás muy débil', 'El faquir no te deja tumbarte');
+      sc.snd('error');
+      return;
+    }
+    sc.player.invuln = 0;
+    sc.hurtPlayer(1, p.x, p.y, { cause: 'la cama de clavos' });
+    const n = uses() + 1;
+    room.data.uses = n;
+    const at = { x: cx, y: tileY(5) };
+    if (n === 1) sc.spawnPickup('taco_boletos', at.x, at.y, { burst: true });
+    else if (n === 2) sc.spawnPickup('cofre', at.x, at.y);
+    else {
+      const id = sc.preItem(room, 0, 'camerino');
+      if (id) sc.addPedestal(tileX(10), tileY(1), id);
+      else for (const dx of [-12, 12]) sc.spawnPickup('globo_plata', at.x + dx, at.y);
+      setTxt(hint, 'El faquir ya no quiere verte');
+      bed.setTint(0x777777);
+    }
+    sc.snd('premio');
   });
 }
 

@@ -481,4 +481,7 @@ const ROOM_GLYPH: Partial<Record<RoomState['type'], [string[], number]>> = {
   secreta: [['.#.', '#.#', '.#.'], 0x8a8394],
   pitonisa: [['...', '###', '.#.'], 0xc9b3ef],
   reto: [['.#.', '.#.', '.#.'], 0xe8743b],
+  almacen: [['###', '###', '...'], 0xa8673b],
+  clavos: [['#.#', '#.#', '###'], 0xa3a0ad],
+  curandero: [['.#.', '###', '#.#'], 0x7fd1b9],
 };

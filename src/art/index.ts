@@ -11,7 +11,7 @@ import { ACT3_SPRITES } from './sprites/act3';
 import { ACT4_SPRITES } from './sprites/act4';
 import { SET_COSTUMES } from './sprites/costumes';
 
-const DOOR_STYLES: DoorStyle[] = ['normal', 'jefe', 'camerino', 'puesto', 'diana', 'barraca', 'secreta', 'contrato', 'pitonisa', 'reto'];
+const DOOR_STYLES: DoorStyle[] = ['normal', 'jefe', 'camerino', 'puesto', 'diana', 'barraca', 'secreta', 'contrato', 'pitonisa', 'reto', 'almacen', 'clavos', 'curandero'];
 
 /** Genera todas las texturas del juego (las sustituciones PNG ya cargadas se respetan). */
 export function bakeEverything(scene: Phaser.Scene): void {

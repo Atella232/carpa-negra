@@ -27,7 +27,11 @@ export type FloorStyle =
   | 'reto'
   // Acto IV
   | 'pista'
-  | 'pista_central';
+  | 'pista_central'
+  // Salas especiales extra
+  | 'almacen'
+  | 'clavos'
+  | 'curandero';
 
 const STYLE: Record<FloorStyle, {
   floor: string; dot: string; stripeA: string; stripeB: string; ring?: string; bars?: boolean; straw?: boolean;
@@ -55,6 +59,9 @@ const STYLE: Record<FloorStyle, {
   barraca: { floor: '#2b3550', dot: '#384466', stripeA: '#7a5a10', stripeB: '#1a2038' },
   secreta: { floor: '#2a2230', dot: '#382d40', stripeA: '#1d1424', stripeB: '#120c16' },
   contrato: { floor: '#1a0a10', dot: '#2a0e18', stripeA: '#3a0c14', stripeB: '#0b0710', ring: '#8f1d2c' },
+  almacen: { floor: '#3a2a1c', dot: '#4f3a26', stripeA: '#6b3e26', stripeB: '#1d1424' },
+  clavos: { floor: '#2a2c33', dot: '#3a3d46', stripeA: '#55505e', stripeB: '#1d1424' },
+  curandero: { floor: '#1f3a30', dot: '#2a4a3d', stripeA: '#2f7a6d', stripeB: '#efe6d8' },
 };
 
 /** Fondo completo de la sala (suelo + paredes), único por sala. */
@@ -207,6 +214,16 @@ export const ROOM_SPRITES: Record<string, SpriteDef> = {
       if (f > 0) p.line(5, 10, 8, 14, 'k');
     },
   },
+  // Cama de clavos del faquir (sala especial): 3 baldosas de ancho.
+  cama_clavos: {
+    w: 48,
+    h: 20,
+    paint: (p) => {
+      p.rect(1, 6, 46, 10, 'n').rect(1, 6, 46, 2, 'N');
+      p.rect(2, 16, 3, 4, 'n').rect(43, 16, 3, 4, 'n');
+      for (let x = 3; x < 46; x += 3) for (const y of [3, 6]) p.px(x + (y === 6 ? 1 : 0), y, 'X').px(x + (y === 6 ? 1 : 0), y + 1, 'x');
+    },
+  },
   tachuelas: {
     w: 16,
     h: 16,
@@ -342,7 +359,10 @@ export type DoorStyle =
   | 'secreta'
   | 'contrato'
   | 'pitonisa'
-  | 'reto';
+  | 'reto'
+  | 'almacen'
+  | 'clavos'
+  | 'curandero';
 
 /** Puertas: orientación "superior" (32×16); las demás se rotan. 0 abierta, 1 cerrada. */
 export function doorSprite(style: DoorStyle): SpriteDef {
@@ -357,6 +377,9 @@ export function doorSprite(style: DoorStyle): SpriteDef {
     contrato: { a: 'k', b: 'e', trim: 'R' },
     pitonisa: { a: 'p', b: 'h', trim: 'y' },
     reto: { a: 'o', b: 'R', trim: 'Y' },
+    almacen: { a: 'n', b: 'N', trim: 't' },
+    clavos: { a: 's', b: 'x', trim: 'X' },
+    curandero: { a: 'c', b: 'w', trim: 'C' },
   };
   const s = frame[style];
   return {
@@ -395,6 +418,9 @@ export function doorSprite(style: DoorStyle): SpriteDef {
       if (style === 'contrato') p.ellipse(15.5, 1, 3, 1.2, 'R').px(15, 1, 'k');
       if (style === 'pitonisa') p.disc(15.5, 1, 2, 'h').px(15, 0, 'W');
       if (style === 'reto') p.rect(15, 0, 2, 2, 'W').px(15, 0, 'R');
+      if (style === 'almacen') p.rect(13, 0, 6, 2, 'N').px(15, 0, 'y').px(16, 0, 'y');
+      if (style === 'clavos') for (let x = 8; x < 25; x += 3) p.px(x, 0, 'X');
+      if (style === 'curandero') p.rect(15, 0, 2, 3, 'R').rect(14, 1, 4, 1, 'R');
     },
   };
 }
