@@ -124,7 +124,7 @@ export interface RunState {
   /** Nivel de La Gira (0 = normal). */
   gira: number;
   /** Contadores de la partida (para carteles y resumen). */
-  stats: { bombsUsedAct: number; ovaciones: number; contratos: number; espejos: number };
+  stats: { bombsUsedAct: number; ovaciones: number; contratos: number; espejos: number; fuegos?: number };
   /** Objetos bloqueados al empezar la partida (se guardan para repetir semilla). */
   locked: string[];
   /** El telón debe abrirse al empezar el acto. */
@@ -261,7 +261,7 @@ export function createRun(seedInput: string, opts: RunOptions | number = {}): Ru
     publico: { value: 0, combo: 0 },
     mode: o.mode ?? 'normal',
     gira: o.gira ?? 0,
-    stats: { bombsUsedAct: 0, ovaciones: 0, contratos: 0, espejos: 0 },
+    stats: { bombsUsedAct: 0, ovaciones: 0, contratos: 0, espejos: 0, fuegos: 0 },
     locked,
     beaten: [],
   };

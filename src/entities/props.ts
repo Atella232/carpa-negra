@@ -216,10 +216,24 @@ export class Obstacle extends Phaser.Physics.Arcade.Image {
   }
 }
 
-/** Charco de fuego en el suelo (del Tragafuegos o del brasero). */
+/** Disparos que hacen falta para apagar un brasero. */
+export const BRASERO_HITS = 3;
+
+/** Aspecto del brasero según los golpes: la llama se apaga poco a poco. */
+export function braseroLook(o: Obstacle): void {
+  if (o.hits >= BRASERO_HITS) {
+    o.extinguished = true;
+    o.clearTint();
+    o.setTexture('brasero_apagado');
+  } else if (o.hits > 0) o.setTint(o.hits === 1 ? 0xcccccc : 0x999999);
+}
+
+/** Charco de fuego en el suelo (del Tragafuegos o del brasero). Se apaga a disparos. */
 export class Fire extends Phaser.GameObjects.Sprite {
   life: number;
   t = 0;
+  /** Disparos que aguanta antes de apagarse. */
+  hp = 2;
   constructor(scene: GameScene, x: number, y: number, life: number) {
     super(scene, x, y, 'fuego_suelo', 0);
     this.life = life;
@@ -237,5 +251,22 @@ export class Fire extends Phaser.GameObjects.Sprite {
     this.setFrame(Math.floor(this.t * 10) % 3);
     if (this.life < 0.4) this.setAlpha(Math.max(0, this.life / 0.4));
     if (this.life <= 0) this.destroy();
+  }
+
+  /** Le da agua (un disparo, un petardo): se encoge y, sin vida, se apaga. Devuelve si se apagó. */
+  douse(n = 1): boolean {
+    if (!this.active || this.life <= 0.3) return false;
+    const sc = this.scene as GameScene;
+    this.hp -= n;
+    sc.fx.sparks(this.x, this.y - 2, 0xcfd3dc, 4);
+    sc.snd('fuego');
+    if (this.hp > 0) {
+      this.setScale(0.7);
+      return false;
+    }
+    sc.fx.dust(this.x, this.y, 3);
+    sc.run.stats.fuegos = (sc.run.stats.fuegos ?? 0) + 1;
+    this.destroy();
+    return true;
   }
 }

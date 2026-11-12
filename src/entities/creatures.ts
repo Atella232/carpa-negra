@@ -226,7 +226,7 @@ export class Tragafuegos extends Enemy {
       const d = 10 + i * 15;
       this.sc.time.delayedCall(i * 90, () => {
         if (this.dead || !this.active) return;
-        this.sc.spawnFire(this.x + Math.cos(a) * d, this.y + 4 + Math.sin(a) * d, 3);
+        this.sc.spawnFire(this.x + Math.cos(a) * d, this.y + 4 + Math.sin(a) * d, 4);
       });
     }
     this.sc.spawnShot(this.x, this.y - 4, Math.cos(a) * 95, Math.sin(a) * 95, false, {

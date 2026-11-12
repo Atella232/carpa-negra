@@ -4,7 +4,7 @@ import type { RoomState } from '../core/run';
 import { COLS, DEPTH } from '../config';
 import Phaser from 'phaser';
 import { OBSTACLE_KINDS, TILES, TileKind } from '../data/tiles';
-import { Obstacle, ObstacleKind } from '../entities/props';
+import { Obstacle, ObstacleKind, braseroLook } from '../entities/props';
 import type { Shot } from '../entities/Shot';
 
 export interface TileCtx {
@@ -35,10 +35,7 @@ function obstacle(t: TileCtx, kind: ObstacleKind): void {
   if (room.destroyed.includes(idx)) return;
   const hits = room.damaged[idx] ?? 0;
   const o = new Obstacle(sc, t.x, t.y, kind, idx, hits);
-  if (kind === 'brasero' && hits >= 4) {
-    o.extinguished = true;
-    o.setTexture('brasero_apagado');
-  }
+  if (kind === 'brasero') braseroLook(o);
   sc.nav.setBlocked(t.c, t.r, true);
 }
 

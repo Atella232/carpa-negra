@@ -402,7 +402,22 @@ export class GameScene extends Phaser.Scene {
     this.scene.pause();
   }
 
+  /** Tus disparos apagan el fuego del suelo (los de fuego lo atraviesan sin apagarlo). */
+  private checkFireShots(): void {
+    if (!this.hazards.length) return;
+    for (const s of this.g.pShots.getChildren() as Shot[]) {
+      if (s.dead || !s.active || s.opts.burn) continue;
+      // La sombra de la pelota (8 px por debajo) es lo que pasa por el suelo:
+      // el mismo margen con el que el fuego quema al payaso.
+      const fire = this.hazards.find((h) => h.active && h.life > 0.3 && Math.abs(s.x - h.x) < 8 && Math.abs(s.y + 8 - h.y) < 9);
+      if (!fire) continue;
+      fire.douse(s.opts.damage >= 7 ? 2 : 1);
+      if (!s.opts.pierce && !s.opts.spectral) s.pop('obstaculo');
+    }
+  }
+
   private checkHazards(): void {
+    this.checkFireShots();
     const pl = this.player;
     const flying = this.effects.hasFlag('flight');
     if (!flying) {

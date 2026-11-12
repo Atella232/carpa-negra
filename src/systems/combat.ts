@@ -11,7 +11,7 @@ import { rebuildDoors, DoorInfo } from '../systems/RoomBuilder';
 import { CRATE_MARKED } from '../data/loot';
 import { Shot } from '../entities/Shot';
 import { Enemy } from '../entities/Enemy';
-import { Pickup, Obstacle } from '../entities/props';
+import { Pickup, Obstacle, BRASERO_HITS, braseroLook } from '../entities/props';
 import { playMusic } from '../audio/music';
 import { clearRunSave } from '../core/runSave';
 import { logRoom } from '../core/telemetry';
@@ -170,10 +170,13 @@ export function hitObstacle(this: GameScene, o: Obstacle): void {
     else o.setFrame(o.hits);
   } else if (o.kind === 'brasero') {
     this.room.damaged[o.tile] = o.hits;
-    if (o.hits >= 4) {
-      o.extinguished = true;
-      o.setTexture('brasero_apagado');
-      this.snd('fuego');
+    // Cada golpe se nota: vapor, chisporroteo y la llama se oscurece.
+    this.fx.sparks(o.x, o.y - 6, 0xcfd3dc, 3);
+    this.snd('fuego');
+    braseroLook(o);
+    if (o.extinguished) {
+      this.fx.dust(o.x, o.y - 6, 4);
+      this.run.stats.fuegos = (this.run.stats.fuegos ?? 0) + 1;
       if (this.rngLoot.chance(0.25)) this.dropRandom(o.x, o.y + 10);
     }
   }
@@ -303,8 +306,12 @@ export function explode(this: GameScene, x: number, y: number, o: { damage: numb
     if (Phaser.Math.Distance.Between(x, y, ob.x, ob.y) > radius + 4) continue;
     if (ob.kind === 'bloque') continue;
     if (ob.kind === 'brasero') {
-      ob.extinguished = true;
-      ob.setTexture('brasero_apagado');
+      if (!ob.extinguished) {
+        ob.hits = BRASERO_HITS;
+        this.room.damaged[ob.tile] = ob.hits;
+        braseroLook(ob);
+        this.run.stats.fuegos = (this.run.stats.fuegos ?? 0) + 1;
+      }
       continue;
     }
     this.destroyObstacle(ob, true);
@@ -322,6 +329,8 @@ export function explode(this: GameScene, x: number, y: number, o: { damage: numb
     }
   }
   for (const s of this.enemyShotsNear(x, y, radius)) s.pop();
+  // La onda apaga el fuego del suelo.
+  for (const h of [...this.hazards]) if (Phaser.Math.Distance.Between(x, y, h.x, h.y) < radius + 6) h.douse(99);
   this.revealSecretsNear(x, y);
 }
 
