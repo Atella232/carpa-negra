@@ -54,6 +54,15 @@ export function setupColliders(this: GameScene): void {
   add.overlap(P, g.eShots, (_p, s) => {
     const shot = s as Shot;
     if (shot.dead) return;
+    // El orbe del hipnotizador no hace daño: invierte el movimiento un rato.
+    if (shot.opts.daze > 0) {
+      if (!this.god && this.player.invuln <= 0 && this.mareoT <= 0) {
+        this.mareoT = shot.opts.daze;
+        this.floatText('¡Mareado!', 0xc9b3ef);
+      }
+      shot.pop('carne');
+      return;
+    }
     this.hurtPlayer(shot.opts.halves, shot.x, shot.y, { cause: shot.cause || 'una bala' });
     shot.pop('carne');
   });

@@ -126,8 +126,8 @@ export const ACTS: ActDef[] = [
     specials: EXTRAS_III_IV, exit: 'trampilla', contract: true,
     slots: {
       '5': ['munieco', 'mimo', 'loro', 'perrito'],
-      '6': ['bailarina', 'reflejo', 'leon'],
-      '7': ['lanzacuchillos', 'cobra', 'foca'],
+      '6': ['bailarina', 'reflejo', 'leon', 'sombra'],
+      '7': ['lanzacuchillos', 'cobra', 'foca', 'automata', 'hipnotizador'],
     },
   },
   {
@@ -139,7 +139,7 @@ export const ACTS: ActDef[] = [
     slots: {
       '5': ['mimo', 'munieco', 'loro', 'perrito'],
       '6': ['bailarina', 'leon', 'reflejo', 'mono'],
-      '7': ['augusto', 'lanzacuchillos', 'foca'],
+      '7': ['augusto', 'lanzacuchillos', 'foca', 'automata'],
     },
   },
 ];

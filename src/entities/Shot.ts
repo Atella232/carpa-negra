@@ -37,6 +37,8 @@ export interface ShotOpts {
   crit?: boolean;
   /** Ya ha saltado de criatura (para no encadenar sin fin). */
   isChain?: boolean;
+  /** Segundos de controles invertidos al payaso en vez de daño (orbe del hipnotizador). */
+  daze?: number;
 }
 
 export class Shot extends Phaser.Physics.Arcade.Sprite {
@@ -65,7 +67,7 @@ export class Shot extends Phaser.Physics.Arcade.Sprite {
     this.opts = {
       scale: 1, pierce: false, bounce: 0, burn: false, fragment: false, spectral: false,
       homing: false, isFragment: false, knockback: 70, texture: this.texture.key, rotate: false, burst: 0, poison: false, grow: false,
-      halves: opts.damage, boomerang: false, chain: false, split: false, explosive: false, crit: false, isChain: false,
+      halves: opts.damage, boomerang: false, chain: false, split: false, explosive: false, crit: false, isChain: false, daze: 0,
       ...opts,
     };
     scene.add.existing(this);

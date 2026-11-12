@@ -5,7 +5,7 @@ import type { Enemy, EnemyOpts } from './Enemy';
 import { Champion, ENEMIES, EnemyKind } from '../data/enemies';
 import { Mimo, Polilla, Mono, Lanzacuchillos, Caja, Monociclista, Tragafuegos, Pulga, Globero, GloboSuelto, Malabarista, Perrito } from './creatures';
 import { Leon, Cobra, Oso, Loro, Domador, Payasito, Foca, Titi, Faquir } from './creatures2';
-import { Reflejo, Bailarina, Ilusionista, Senuelo, Munieco, Ventrilocuo, Tragasables, Cabezudo, Cabecita, Orbe } from './creatures3';
+import { Reflejo, Bailarina, Ilusionista, Senuelo, Munieco, Ventrilocuo, Tragasables, Cabezudo, Cabecita, Orbe, Automata, SombraEnemiga, Hipnotizador } from './creatures3';
 import { Trapecista, HombreBala, Zancudo, Augusto, Acomodador, Barbuda } from './creatures4';
 import { CopiaReflejo } from './bosses3';
 import { Guante } from './bosses4';
@@ -52,6 +52,9 @@ const CREATURE_CTORS: Record<EnemyKind, CreatureCtor> = {
   foca: Foca,
   titi: Titi,
   faquir: Faquir,
+  automata: Automata,
+  sombra: SombraEnemiga,
+  hipnotizador: Hipnotizador,
 };
 
 export function spawnCreature(scene: GameScene, kind: EnemyKind, x: number, y: number, champion: Champion | null = null): Enemy {

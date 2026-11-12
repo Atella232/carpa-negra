@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { Enemy, EnemyOpts, anim } from './Enemy';
 import { addTether } from './tether';
+import { TimeTrail } from '../core/trail';
 
 /** Reflejo roto: se mueve como tú pero al revés y contesta a cada disparo. */
 export class Reflejo extends Enemy {
@@ -380,5 +381,132 @@ export class Orbe extends Enemy {
     this.sc.fx.sparks(this.x, this.y, 0xc9b3ef, 6);
     this.dead = true;
     this.destroy();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nuevas del Acto III
+// ---------------------------------------------------------------------------
+
+/**
+ * Autómata de feria: marcha a compás (un latido cada 0,7 s). Dos latidos da un
+ * paso de una baldosa hacia ti; en el tercero se para y dispara cuatro balas,
+ * alternando cruz y aspa. Se le encienden los ojos el latido antes.
+ */
+export class Automata extends Enemy {
+  private beatT = Math.random() * 0.7;
+  private beat = Math.floor(Math.random() * 3);
+  private cross = Math.random() < 0.5;
+  private step: { x: number; y: number } | null = null;
+  protected think(dt: number): void {
+    this.beatT -= dt;
+    if (this.step) {
+      const d = Phaser.Math.Distance.Between(this.x, this.y, this.step.x, this.step.y);
+      if (d < 1.5) this.step = null;
+      else this.toward(this.step.x, this.step.y, 80);
+    }
+    if (this.beatT > 0) return;
+    this.beatT = 0.7;
+    this.beat = (this.beat + 1) % 3;
+    if (this.beat === 2) {
+      // Disparo.
+      this.setFrame(0);
+      const n = this.champion ? 8 : 4;
+      this.ring(n, 80, {}, this.cross ? 0 : Math.PI / 4);
+      this.cross = !this.cross;
+      this.sc.snd('bombo');
+      return;
+    }
+    // Paso de una baldosa por el eje más largo (el siguiente latido, ojos encendidos).
+    this.setFrame(this.beat === 1 ? 2 : 1);
+    if (this.beat === 1) this.windupFlash();
+    const p = this.player;
+    const dx = p.x - this.x,
+      dy = p.y - this.y;
+    const tries = Math.abs(dx) > Math.abs(dy) ? [{ x: Math.sign(dx), y: 0 }, { x: 0, y: Math.sign(dy) }] : [{ x: 0, y: Math.sign(dy) }, { x: Math.sign(dx), y: 0 }];
+    for (const t of tries) {
+      if (!t.x && !t.y) continue;
+      const nx = this.x + t.x * 16,
+        ny = this.y + t.y * 16;
+      const c = Math.floor((nx - 16) / 16),
+        r = Math.floor((ny + this.bodyDy - 16) / 16);
+      if (c < 0 || r < 0 || c > 12 || r > 6 || this.sc.nav.isBlocked(c, r)) continue;
+      this.step = { x: nx, y: ny };
+      this.sc.snd('pisoton');
+      break;
+    }
+  }
+}
+
+/**
+ * Sombra: repite tu camino con retraso (1,4 s; la segunda, 2,2 s). Al aparecer
+ * espera un momento y va a su sitio del rastro. Te obliga a no pararte ni a
+ * volver sobre tus pasos.
+ */
+export class SombraEnemiga extends Enemy {
+  private trail = new TimeTrail(3.5);
+  private lag: number;
+  private ready = false;
+  private waitT = 1;
+  constructor(scene: GameScene, x: number, y: number, texture: string, o: EnemyOpts) {
+    super(scene, x, y, texture, o);
+    const others = scene.clearPending().filter((e) => e instanceof SombraEnemiga && e !== this).length;
+    this.lag = 1.4 + 0.8 * Math.min(2, others);
+    this.setAlpha(0.75);
+  }
+  protected tick(dt: number): void {
+    const p = this.sc.player;
+    this.trail.push(p.x, p.y, dt);
+  }
+  protected think(dt: number): void {
+    const at = this.trail.at(this.lag);
+    if (!at) return;
+    if (this.waitT > 0) {
+      this.waitT -= dt;
+      return;
+    }
+    const d = Phaser.Math.Distance.Between(this.x, this.y, at.x, at.y);
+    if (!this.ready) {
+      if (d < 4) this.ready = true;
+      else this.toward(at.x, at.y, this.speed);
+      return;
+    }
+    // Calca el rastro: va justo a donde estabas.
+    const v = Math.min(220, d / Math.max(dt, 1 / 120));
+    if (d > 0.5) this.toward(at.x, at.y, v);
+    this.setFlipX(at.x < this.x);
+  }
+}
+
+/**
+ * Hipnotizador: guarda la distancia y lanza un orbe en espiral, lento, que no
+ * quita vida: si te da, el movimiento se invierte un par de segundos.
+ */
+export class Hipnotizador extends Enemy {
+  timer = Phaser.Math.FloatBetween(1.8, 2.8);
+  windup = 0;
+  t = 0;
+  protected think(dt: number): void {
+    this.t += dt;
+    this.setFlipX(this.player.x < this.x);
+    if (this.windup > 0) {
+      this.windup -= dt;
+      this.setFrame(Math.floor(this.t * 6) % 2);
+      if (this.windup <= 0) {
+        this.fan(1, 0, 60, { texture: 'orbe_hipno', scale: 1.3, range: 240, daze: 2.2, rotate: true });
+        this.sc.snd('carcajada');
+      }
+      return;
+    }
+    this.setFrame(0);
+    const d = this.distToPlayer();
+    if (d < 70) this.flee();
+    else if (d > 100) this.chase();
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 3.6;
+      this.windup = 0.6;
+      this.windupFlash();
+    }
   }
 }

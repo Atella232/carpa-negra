@@ -312,4 +312,57 @@ export const ACT3_SPRITES: Record<string, SpriteDef> = {
     p.disc(6.5, 7, 6, 'y').disc(6.5, 7, 5, 'w').line(6.5, 7, 6.5, 3, 'k').line(6.5, 7, 9, 8, 'k');
     p.rect(5, 0, 3, 2, 'y').line(1, 12, 12, 2, 'R');
   }),
+  // --- Nuevas del Acto III ---
+  // Autómata de feria: 0 quieto, 1 paso, 2 ojos encendidos (va a disparar).
+  automata: {
+    w: 16,
+    h: 18,
+    frames: 3,
+    paint: (p, f) => {
+      p.rect(4, 2, 8, 7, 'x').rect(4, 2, 8, 1, 'X').rect(7, 0, 2, 2, 'N');
+      const eye = f === 2 ? 'R' : 'k';
+      p.rect(5, 4, 2, 2, eye).rect(9, 4, 2, 2, eye);
+      p.rect(6, 7, 4, 1, 's');
+      p.rect(3, 9, 10, 6, 'N').rect(3, 9, 10, 1, 't');
+      p.disc(8, 12, 2, 'y').px(8, 12, 'n'); // engranaje
+      p.rect(1, 10, 2, 4, 'x').rect(13, 10, 2, 4, 'x');
+      const step = f === 1 ? 1 : 0;
+      p.rect(4 + step, 15, 3, 3, 's').rect(9 - step, 15, 3, 3, 's');
+    },
+  },
+  // Sombra: tu silueta, oscura y con ojos rojos.
+  sombra_enemiga: {
+    w: 14,
+    h: 16,
+    outline: '#7a4a8c',
+    paint: (p) => {
+      p.disc(7, 5, 4, 'K').disc(3, 2, 2, 'K').disc(11, 2, 2, 'K');
+      p.px(5, 5, 'R').px(9, 5, 'R');
+      p.rect(4, 9, 6, 5, 'K').rect(2, 10, 2, 3, 'K').rect(10, 10, 2, 3, 'K');
+      p.rect(4, 14, 2, 2, 'K').rect(8, 14, 2, 2, 'K');
+    },
+  },
+  // Hipnotizador: 0 andando, 1 balanceando el péndulo (aviso).
+  hipnotizador: {
+    w: 16,
+    h: 20,
+    frames: 2,
+    paint: (p, f) => {
+      p.rect(4, 0, 8, 3, 'k').rect(4, 2, 8, 1, 'R').rect(3, 3, 10, 1, 'k'); // chistera
+      p.disc(8, 6, 3, 'w').px(7, 6, 'P').px(9, 6, 'P');
+      p.line(6, 8, 10, 8, 'k');
+      p.rect(4, 10, 8, 7, 'P').rect(7, 10, 2, 7, 'h').rect(4, 10, 8, 1, 'h');
+      p.rect(5, 17, 2, 3, 'k').rect(9, 17, 2, 3, 'k');
+      const sx = f === 1 ? 14 : 12;
+      p.line(12, 11, sx, 15, 'y').disc(sx, 16, 1.5, 'h');
+    },
+  },
+  orbe_hipno: {
+    w: 10,
+    h: 10,
+    outline: false,
+    paint: (p) => {
+      p.disc(4.5, 4.5, 4.5, 'h').ring(4.5, 4.5, 3, 'P').ring(4.5, 4.5, 1.5, 'd').px(4, 4, 'W');
+    },
+  },
 };

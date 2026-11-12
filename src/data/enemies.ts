@@ -43,7 +43,11 @@ export type EnemyKind =
   // Nuevas del Acto II
   | 'foca'
   | 'titi'
-  | 'faquir';
+  | 'faquir'
+  // Nuevas del Acto III
+  | 'automata'
+  | 'sombra'
+  | 'hipnotizador';
 
 export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente' | 'reflejo' | 'fortuna' | 'maestro';
 
@@ -115,6 +119,10 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   foca: { kind: 'foca', name: 'Foca equilibrista', hp: 18, speed: 20, texture: 'foca', body: { w: 14, h: 8, dy: 3 } },
   titi: { kind: 'titi', name: 'Mono ladrón', hp: 9, speed: 88, texture: 'titi', body: { w: 9, h: 8, dy: 3 } },
   faquir: { kind: 'faquir', name: 'Faquir', hp: 20, speed: 34, texture: 'faquir', body: { w: 10, h: 10, dy: 5 } },
+  // --- Nuevas del Acto III ---
+  automata: { kind: 'automata', name: 'Autómata de feria', hp: 18, speed: 0, texture: 'automata', body: { w: 10, h: 10, dy: 5 } },
+  sombra: { kind: 'sombra', name: 'Sombra', hp: 14, speed: 90, flying: true, texture: 'sombra_enemiga', body: { w: 9, h: 10, dy: 3 } },
+  hipnotizador: { kind: 'hipnotizador', name: 'Hipnotizador', hp: 18, speed: 28, texture: 'hipnotizador', body: { w: 10, h: 12, dy: 5 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -156,6 +164,10 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   S: 'foca',
   N: 'titi',
   K: 'faquir',
+  // Nuevas del Acto III
+  U: 'automata',
+  W: 'sombra',
+  Y: 'hipnotizador',
 };
 
 /**
@@ -176,6 +188,8 @@ export const THREAT: Record<EnemyKind, number> = {
   globero: 4, globoSuelto: 1, malabarista: 3, perrito: 1.5,
   // Nuevas del Acto II
   foca: 3, titi: 1, faquir: 3,
+  // Nuevas del Acto III
+  automata: 3, sombra: 3, hipnotizador: 3,
 };
 
 /** Color de los restos al morir. */
@@ -188,6 +202,7 @@ export const GIB_COLOR: Partial<Record<string, number>> = {
   trapecista: 0xd9627f, hombre_bala: 0xd4323f, zancudo: 0x2b4f7a, augusto: 0xe8743b, acomodador: 0xf2c14e, barbuda: 0x6b3e26,
   globero: 0x2b4f7a, globoSuelto: 0x7a4a8c, malabarista: 0xe8743b, perrito: 0xc2bccb,
   foca: 0x55505e, titi: 0xa8673b, faquir: 0xe8743b,
+  automata: 0xa3a0ad, sombra_enemiga: 0x1d1424, hipnotizador: 0x7a4a8c,
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';
