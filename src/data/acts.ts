@@ -113,9 +113,9 @@ export const ACTS: ActDef[] = [
     floor: { normal: 'jaulas', inicio: 'jaulas', jefe: 'guarida' }, specials: EXTRAS_I_II,
     exit: 'trampilla', contract: true,
     slots: {
-      '5': ['loro', 'payasito', 'mimo', 'perrito'],
+      '5': ['loro', 'payasito', 'mimo', 'perrito', 'titi'],
       '6': ['leon', 'mono', 'monociclista'],
-      '7': ['cobra', 'lanzacuchillos'],
+      '7': ['cobra', 'lanzacuchillos', 'foca', 'faquir'],
     },
   },
   {
@@ -127,7 +127,7 @@ export const ACTS: ActDef[] = [
     slots: {
       '5': ['munieco', 'mimo', 'loro', 'perrito'],
       '6': ['bailarina', 'reflejo', 'leon'],
-      '7': ['lanzacuchillos', 'cobra'],
+      '7': ['lanzacuchillos', 'cobra', 'foca'],
     },
   },
   {
@@ -139,7 +139,7 @@ export const ACTS: ActDef[] = [
     slots: {
       '5': ['mimo', 'munieco', 'loro', 'perrito'],
       '6': ['bailarina', 'leon', 'reflejo', 'mono'],
-      '7': ['augusto', 'lanzacuchillos'],
+      '7': ['augusto', 'lanzacuchillos', 'foca'],
     },
   },
 ];

@@ -77,7 +77,8 @@ export class GameScene extends Phaser.Scene {
   doors: DoorInfo[] = [];
   pedestals: Pedestal[] = [];
   hazards: Fire[] = [];
-  spikes: { x: number; y: number }[] = [];
+  /** Tachuelas (las temporales del faquir llevan `armed`: solo pinchan cuando dice). */
+  spikes: { x: number; y: number; armed?: () => boolean }[] = [];
   /** Objetos propios de la sala (decorado, carteles...) que se borran al salir. */
   roomObjs: Phaser.GameObjects.GameObject[] = [];
   /** Dibujos de puertas (se rehacen al abrirse). */
@@ -422,6 +423,7 @@ export class GameScene extends Phaser.Scene {
     const flying = this.effects.hasFlag('flight');
     if (!flying) {
       for (const s of this.spikes) {
+        if (s.armed && !s.armed()) continue;
         if (Math.abs(pl.x - s.x) < 8 && Math.abs(pl.y - s.y) < 8) {
           this.hurtPlayer(1, s.x, s.y, { cause: 'unas tachuelas' });
           break;

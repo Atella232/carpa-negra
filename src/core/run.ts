@@ -125,7 +125,7 @@ export interface RunState {
   /** Nivel de La Gira (0 = normal). */
   gira: number;
   /** Contadores de la partida (para carteles y resumen). */
-  stats: { bombsUsedAct: number; ovaciones: number; contratos: number; espejos: number; fuegos?: number };
+  stats: { bombsUsedAct: number; ovaciones: number; contratos: number; espejos: number; fuegos?: number; ladrones?: number };
   /** Objetos bloqueados al empezar la partida (se guardan para repetir semilla). */
   locked: string[];
   /** El telón debe abrirse al empezar el acto. */

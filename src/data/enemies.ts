@@ -39,7 +39,11 @@ export type EnemyKind =
   | 'globero'
   | 'globoSuelto'
   | 'malabarista'
-  | 'perrito';
+  | 'perrito'
+  // Nuevas del Acto II
+  | 'foca'
+  | 'titi'
+  | 'faquir';
 
 export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente' | 'reflejo' | 'fortuna' | 'maestro';
 
@@ -107,6 +111,10 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   globoSuelto: { kind: 'globoSuelto', name: 'Globo suelto', hp: 1, speed: 30, flying: true, texture: 'globoSuelto', body: { w: 9, h: 10, dy: 0 } },
   malabarista: { kind: 'malabarista', name: 'Malabarista', hp: 16, speed: 30, texture: 'malabarista', body: { w: 10, h: 12, dy: 4 } },
   perrito: { kind: 'perrito', name: 'Perrito amaestrado', hp: 6, speed: 78, texture: 'perrito', body: { w: 10, h: 7, dy: 2 } },
+  // --- Nuevas del Acto II ---
+  foca: { kind: 'foca', name: 'Foca equilibrista', hp: 18, speed: 20, texture: 'foca', body: { w: 14, h: 8, dy: 3 } },
+  titi: { kind: 'titi', name: 'Mono ladrón', hp: 9, speed: 88, texture: 'titi', body: { w: 9, h: 8, dy: 3 } },
+  faquir: { kind: 'faquir', name: 'Faquir', hp: 20, speed: 34, texture: 'faquir', body: { w: 10, h: 10, dy: 5 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -144,6 +152,10 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   G: 'globero',
   L: 'malabarista',
   D: 'perrito',
+  // Nuevas del Acto II
+  S: 'foca',
+  N: 'titi',
+  K: 'faquir',
 };
 
 /**
@@ -162,6 +174,8 @@ export const THREAT: Record<EnemyKind, number> = {
   senuelo: 0, orbe: 0, copia: 0, guante: 0,
   // Nuevas del Acto I
   globero: 4, globoSuelto: 1, malabarista: 3, perrito: 1.5,
+  // Nuevas del Acto II
+  foca: 3, titi: 1, faquir: 3,
 };
 
 /** Color de los restos al morir. */
@@ -173,6 +187,7 @@ export const GIB_COLOR: Partial<Record<string, number>> = {
   tragasables: 0xa3a0ad, cabezudo: 0xf2a3b5, cabecita: 0xf2a3b5, orbe: 0xc9b3ef, tu_reflejo: 0x7fd1b9,
   trapecista: 0xd9627f, hombre_bala: 0xd4323f, zancudo: 0x2b4f7a, augusto: 0xe8743b, acomodador: 0xf2c14e, barbuda: 0x6b3e26,
   globero: 0x2b4f7a, globoSuelto: 0x7a4a8c, malabarista: 0xe8743b, perrito: 0xc2bccb,
+  foca: 0x55505e, titi: 0xa8673b, faquir: 0xe8743b,
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';

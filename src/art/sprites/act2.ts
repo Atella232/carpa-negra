@@ -251,4 +251,62 @@ export const ACT2_SPRITES: Record<string, SpriteDef> = {
     for (let x = 1; x < 13; x += 3) p.rect(x, 4, 1, 8, 'x');
     p.rect(5, 0, 4, 2, 'y');
   }),
+  // --- Nuevas del Acto II ---
+  // Foca equilibrista: 0 deslizándose, 1 con la pelota en alto (aviso).
+  foca: {
+    w: 18,
+    h: 14,
+    frames: 2,
+    paint: (p, f) => {
+      p.ellipse(9, 9.5, 7, 4, 's').ellipse(9, 10.5, 5, 2.5, 'g');
+      p.disc(14, 6, 3, 's').px(15, 5, 'k').px(16, 7, 'k').px(13, 7, 'G').px(17, 7, 'G');
+      p.line(2, 10, 0, 13, 's').line(3, 11, 1, 13, 'S');
+      p.line(10, 12, 12, 14, 'S');
+      if (f === 1) {
+        p.disc(14, 1.5, 2, 'R').px(13, 1, 'W').px(15, 2, 'y').px(14, 0, 'B');
+      } else p.disc(6, 4, 2, 'R').px(5, 3, 'W').px(7, 4, 'y');
+    },
+  },
+  pelota_foca: {
+    w: 8,
+    h: 8,
+    paint: (p) => {
+      p.disc(3.5, 3.5, 3.5, 'R').rect(0, 3, 8, 2, 'y').rect(3, 0, 2, 8, 'B').px(2, 2, 'W');
+    },
+  },
+  // Mono ladrón: 0-1 corriendo, 2 con el saco de boletos.
+  titi: {
+    w: 14,
+    h: 14,
+    frames: 3,
+    paint: (p, f) => {
+      p.disc(7, 9, 3.5, 'N').ellipse(7, 10, 2, 2, 't');
+      p.disc(7, 4.5, 3, 'N').ellipse(7, 5.5, 2, 1.5, 't');
+      p.px(6, 4, 'k').px(8, 4, 'k').px(7, 6, 'k');
+      p.rect(5, 0, 4, 2, 'v').px(7, 0, 'y'); // fez
+      p.line(10, 10, 13, 7, 'N').px(13, 6, 'N');
+      const leg = f === 1 ? 1 : 0;
+      p.rect(5 - leg, 12, 1, 2, 'n').rect(8 + leg, 12, 1, 2, 'n');
+      if (f === 2) p.disc(2.5, 8.5, 2.5, 'y').px(2, 6, 'n').px(1, 9, 'Y');
+    },
+  },
+  // Faquir: 0 andando, 1 sentado tocando la flauta (aviso).
+  faquir: {
+    w: 16,
+    h: 18,
+    frames: 2,
+    paint: (p, f) => {
+      p.ellipse(8, 3, 4, 3, 'W').px(8, 0, 'R'); // turbante
+      p.disc(8, 6, 2.5, 'n').px(7, 6, 'k').px(9, 6, 'k').rect(6, 8, 5, 1, 'k');
+      if (f === 0) {
+        p.rect(5, 9, 6, 6, 'o').rect(5, 13, 6, 1, 'R');
+        p.rect(6, 15, 2, 3, 'n').rect(9, 15, 2, 3, 'n');
+        p.rect(3, 10, 2, 4, 'n').rect(11, 10, 2, 4, 'n');
+      } else {
+        p.ellipse(8, 14, 6, 3.5, 'o').rect(4, 15, 9, 1, 'R');
+        p.rect(5, 9, 6, 5, 'o');
+        p.line(9, 8, 14, 10, 'N').px(14, 11, 'y').px(15, 10, 'y');
+      }
+    },
+  },
 };

@@ -216,6 +216,37 @@ export class Obstacle extends Phaser.Physics.Arcade.Image {
   }
 }
 
+/**
+ * Tachuela temporal (las que va dejando el faquir): brilla 0,4 s sin pinchar
+ * (aviso), pincha unos segundos y desaparece.
+ */
+export class TempSpike extends Phaser.GameObjects.Sprite {
+  t = 0;
+  readonly entry: { x: number; y: number; armed: () => boolean };
+  constructor(scene: GameScene, x: number, y: number, public life = 5.4) {
+    super(scene, x, y, 'tachuelas', 0);
+    scene.add.existing(this);
+    this.setDepth(DEPTH.hazard).setScale(0.8).setTint(0xfff2a8).setAlpha(0.6);
+    this.entry = { x, y, armed: () => this.active && this.t >= 0.4 };
+    scene.spikes.push(this.entry);
+    scene.roomObjs.push(this);
+  }
+  preUpdate(time: number, delta: number): void {
+    super.preUpdate(time, delta);
+    const dt = Math.min(0.05, delta / 1000);
+    this.t += dt;
+    this.life -= dt;
+    if (this.t >= 0.4 && this.tintTopLeft !== 0xffffff) this.clearTint().setAlpha(1);
+    if (this.life < 0.4) this.setAlpha(Math.max(0, this.life / 0.4));
+    if (this.life <= 0) this.remove();
+  }
+  remove(): void {
+    const sc = this.scene as GameScene;
+    if (sc) sc.spikes = sc.spikes.filter((s) => s !== this.entry);
+    this.destroy();
+  }
+}
+
 /** Disparos que hacen falta para apagar un brasero. */
 export const BRASERO_HITS = 3;
 

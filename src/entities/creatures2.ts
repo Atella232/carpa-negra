@@ -1,8 +1,12 @@
 // Criaturas del Acto II: Las Jaulas.
 import Phaser from 'phaser';
+import type { GameScene } from '../scenes/GameScene';
+import type { EnemyOpts } from './Enemy';
 import { Enemy } from './Enemy';
 
 import { anim } from './Enemy';
+import type { Shot } from './Shot';
+import { TempSpike } from './props';
 
 /** León sarnoso: te acecha y, si te tiene a tiro, salta sobre ti. */
 export class Leon extends Enemy {
@@ -59,6 +63,10 @@ export class Cobra extends Enemy {
   state: 'hidden' | 'rising' | 'up' | 'sinking' = 'hidden';
   timer = Phaser.Math.FloatBetween(0.6, 1.6);
   shots = 0;
+  /** La flauta del faquir: si está escondida, asoma ya (con su aviso de siempre). */
+  escupir(): void {
+    if (this.state === 'hidden') this.timer = 0;
+  }
   protected think(dt: number): void {
     this.timer -= dt;
     this.body.setImmovable(true);
@@ -279,5 +287,216 @@ export class Payasito extends Enemy {
       }
     });
     super.die();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nuevas del Acto II
+// ---------------------------------------------------------------------------
+
+/**
+ * Foca equilibrista: se desliza de lado y lanza pelotas grandes y lentas que
+ * rebotan tres veces en las paredes (como mucho dos suyas a la vez). Las jaulas
+ * dejan pasar la pelota: la forma de la sala importa.
+ */
+export class Foca extends Enemy {
+  timer = Phaser.Math.FloatBetween(1.4, 2.4);
+  windup = 0;
+  side = Math.random() < 0.5 ? 1 : -1;
+  t = Math.random();
+  balls: Shot[] = [];
+  private aim = 0;
+  protected think(dt: number): void {
+    this.t += dt;
+    this.balls = this.balls.filter((b) => b.active && !b.dead);
+    const p = this.player;
+    this.setFlipX(p.x < this.x);
+    if (this.windup > 0) {
+      this.windup -= dt;
+      this.setFrame(1);
+      if (this.windup <= 0) this.throwBall();
+      return;
+    }
+    this.setFrame(0);
+    // De lado respecto al payaso; si choca, cambia de sentido.
+    const a = Math.atan2(p.y - this.y, p.x - this.x) + (Math.PI / 2) * this.side;
+    this.desired.set(Math.cos(a) * this.speed, Math.sin(a) * this.speed);
+    const b = this.body.blocked;
+    if (b.left || b.right || b.up || b.down) this.side *= -1;
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 2.8;
+      if (this.balls.length < 2) {
+        this.windup = 0.45;
+        this.aim = Math.atan2(p.y - 6 - this.y, p.x - this.x);
+        this.windupFlash();
+        this.sc.telegraph.line(this.x, this.y, this.x + Math.cos(this.aim) * 60, this.y + Math.sin(this.aim) * 60, 0.45, { owner: this, w: 8 });
+      }
+    }
+  }
+  private throwBall(): void {
+    const n = this.champion ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const a = this.aim + (i - (n - 1) / 2) * 0.35;
+      const s = this.sc.spawnShot(this.x, this.y - 6, Math.cos(a) * 85, Math.sin(a) * 85, false, {
+        damage: 1, range: 420, bounce: 3, scale: 1.4, texture: 'pelota_foca',
+      });
+      this.balls.push(s);
+    }
+    this.sc.snd('rebote');
+  }
+}
+
+/**
+ * Mono ladrón: corre hacia ti en zigzag. Si te toca y llevas boletos, te roba
+ * hasta tres y huye con el saco, más despacio, y cada poco se sienta a
+ * contarlos. Si lo matas con el botín, suelta el doble. Sin boletos, muerde.
+ */
+export class Titi extends Enemy {
+  t = Math.random() * 5;
+  loot = 0;
+  fleeT = 0;
+  /** Con el saco: huye 2,5 s y se sienta 1,5 s a contar (el momento de darle). */
+  countT = 2.5;
+  cd = 0;
+  private hideout: { x: number; y: number } | null = null;
+  private hideT = 0;
+  constructor(scene: GameScene, x: number, y: number, texture: string, o: EnemyOpts) {
+    super(scene, x, y, texture, o);
+    this.contact = 0;
+  }
+  protected tick(dt: number): void {
+    this.cd -= dt;
+    if (this.wake > 0 || this.cd > 0 || this.stunT > 0 || this.distToPlayer() > 11) return;
+    const pl = this.sc.player;
+    if (pl.invuln > 0 || pl.dead || this.sc.god) return;
+    const st = this.sc.run.player;
+    this.cd = 1.2;
+    if (st.tickets > 0) {
+      const n = Math.min(3, st.tickets);
+      st.tickets -= n;
+      this.loot += n;
+      this.sc.floatText(n === 1 ? '-1 boleto' : `-${n} boletos`, 0xf2c14e);
+      this.sc.snd('boleto');
+      this.fleeT = 99;
+    } else {
+      this.sc.hurtPlayer(1, this.x, this.y, { cause: this.name });
+      this.fleeT = 1.5;
+    }
+  }
+  protected think(dt: number): void {
+    this.t += dt;
+    if (this.loot > 0) {
+      // Con el saco (que pesa): huye más despacio y, cada poco, se sienta a contar.
+      this.countT -= dt;
+      this.setFrame(2);
+      if (this.countT < 0) {
+        if (this.countT < -1.5) this.countT = 2.5;
+        return;
+      }
+      // Huye hacia un sitio despejado lejos del payaso (no a las esquinas).
+      this.hideT -= dt;
+      if (!this.hideout || this.hideT <= 0) {
+        this.hideT = 1.2;
+        const p = this.player;
+        let best = 0;
+        for (let i = 0; i < 6; i++) {
+          const c = this.sc.nav.randomFreeTile(120, 72, 90);
+          if (c.x < 40 || c.x > 200 || c.y < 36 || c.y > 108) continue;
+          const d = Phaser.Math.Distance.Between(c.x, c.y, p.x, p.y);
+          if (d > best) {
+            best = d;
+            this.hideout = c;
+          }
+        }
+      }
+      if (this.hideout) this.toward(this.hideout.x, this.hideout.y, this.speed * 0.7);
+      else this.flee();
+    } else if (this.fleeT > 0) {
+      this.fleeT -= dt;
+      this.flee();
+      this.setFrame(anim(this.t, 10, 2));
+    } else {
+      this.chase();
+      // Zigzag: un vaivén perpendicular a la carrera.
+      const a = Math.atan2(this.desired.y, this.desired.x) + Math.PI / 2;
+      const z = Math.sin(this.t * 7) * 35;
+      this.desired.x += Math.cos(a) * z;
+      this.desired.y += Math.sin(a) * z;
+      this.setFrame(anim(this.t, 10, 2));
+    }
+    this.setFlipX(this.desired.x < 0);
+  }
+  die(): void {
+    if (this.dead) return;
+    if (this.loot > 0) {
+      for (let i = 0; i < this.loot * 2; i++) this.sc.spawnPickup('boleto', this.x, this.y, { burst: true });
+      const st = this.sc.run.stats;
+      st.ladrones = (st.ladrones ?? 0) + 1;
+      this.sc.floatText('¡Tu botín, y más!', 0xf2c14e);
+    }
+    super.die();
+  }
+}
+
+/**
+ * Faquir: anda en tramos rectos dejando tachuelas que brillan antes de pinchar.
+ * Cada poco se sienta a tocar la flauta: las cobras de la sala asoman y escupen;
+ * si no hay cobras, sopla un abanico de tres.
+ */
+export class Faquir extends Enemy {
+  target: { x: number; y: number } | null = null;
+  legT = 0;
+  fluteT = 4;
+  sitT = 0;
+  dropT = 0;
+  spikes: TempSpike[] = [];
+  private lastDrop = { x: 0, y: 0 };
+  protected think(dt: number): void {
+    this.spikes = this.spikes.filter((s) => s.active);
+    if (this.sitT > 0) {
+      this.sitT -= dt;
+      this.setFrame(1);
+      if (this.sitT <= 0) this.playFlute();
+      return;
+    }
+    this.setFrame(0);
+    this.fluteT -= dt;
+    if (this.fluteT <= 0) {
+      this.fluteT = 4;
+      this.sitT = 1.2;
+      this.windupFlash();
+      this.sc.snd('aviso');
+      return;
+    }
+    // Tramo recto de 3 a 5 baldosas hacia una baldosa libre en línea recta.
+    this.legT -= dt;
+    if (!this.target || this.legT <= 0 || Phaser.Math.Distance.Between(this.x, this.y, this.target.x, this.target.y) < 4) {
+      this.target = null;
+      for (let i = 0; i < 8 && !this.target; i++) {
+        const c = this.sc.nav.randomFreeTile(this.x, this.y, 80);
+        const d = Phaser.Math.Distance.Between(this.x, this.y, c.x, c.y);
+        if (d >= 40 && this.sc.nav.lineFree(this.x, this.y, c.x, c.y)) this.target = c;
+      }
+      this.legT = 3;
+      if (!this.target) {
+        this.chase();
+        return;
+      }
+    }
+    this.toward(this.target.x, this.target.y);
+    this.setFlipX(this.desired.x < 0);
+    // Una tachuela cada 14 px recorridos (como mucho 12 a la vez).
+    if (Phaser.Math.Distance.Between(this.x, this.y, this.lastDrop.x, this.lastDrop.y) >= 14) {
+      this.lastDrop = { x: this.x, y: this.y };
+      if (this.spikes.length >= 12) this.spikes.shift()?.remove();
+      this.spikes.push(new TempSpike(this.sc, this.x, this.y + this.bodyDy));
+    }
+  }
+  private playFlute(): void {
+    this.sc.snd('trompeta');
+    const cobras = this.sc.clearPending().filter((e): e is Cobra => e instanceof Cobra);
+    if (cobras.length) for (const c of cobras) c.escupir();
+    else this.fan(3, 0.3, 90);
   }
 }
