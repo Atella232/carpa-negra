@@ -18,6 +18,7 @@ import { Menu } from '../ui/Menu';
 import { openOptions } from '../ui/options';
 import { Controls } from '../systems/Controls';
 import { t } from '../ui/i18n';
+import { fontText } from '../art/font';
 
 export type RunMode = RunState['mode'];
 
@@ -395,8 +396,11 @@ export class MenuScene extends Phaser.Scene {
         g.lineStyle(1, 0xefe6d8, 1).beginPath().arc(120, 66, 12, 0.2, Math.PI - 0.2).strokePath();
         g.fillStyle(0x1d1424, 1).fillRect(106, 30, 28, 18).fillRect(100, 46, 40, 4);
       }
-      setTxt(l1, panels[i][0]);
-      setTxt(l2, panels[i][1]);
+      // Las frases largas se parten para no salirse del lienzo (40 caracteres).
+      l1.setText(fontText(wrap(t(panels[i][0]), GAME_W - 12)));
+      l2.setText(fontText(wrap(t(panels[i][1]), GAME_W - 12)));
+      l1.y = 116;
+      l2.y = l1.y + l1.height + 3;
       sfx('aviso');
     };
     draw();
