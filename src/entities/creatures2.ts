@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { Enemy } from './Enemy';
 
-const anim = (t: number, fps: number, frames: number) => Math.floor(t * fps) % frames;
+import { anim } from './Enemy';
 
 /** León sarnoso: te acecha y, si te tiene a tiro, salta sobre ti. */
 export class Leon extends Enemy {
@@ -21,13 +21,16 @@ export class Leon extends Enemy {
         if (this.distToPlayer() < 80 && this.sc.nav.lineFree(this.x, this.y, this.player.x, this.player.y)) {
           this.state = 'crouch';
           this.timer = 0.45;
+          // Apunta al agazaparse y lo avisa: salta por esa línea.
+          const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+          this.dir.set(Math.cos(a), Math.sin(a));
+          this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * 80, this.y + this.dir.y * 80, 0.45, { owner: this, w: 10 });
+          this.windupFlash();
         }
         break;
       case 'crouch':
         this.setFrame(2);
         if (this.timer <= 0) {
-          const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
-          this.dir.set(Math.cos(a), Math.sin(a));
           this.state = 'pounce';
           this.timer = 0.38;
           this.sc.snd('salto');
@@ -66,7 +69,9 @@ export class Cobra extends Enemy {
         this.contact = 0;
         if (this.timer <= 0) {
           this.state = 'rising';
-          this.timer = 0.3;
+          this.timer = 0.45;
+          // El cesto tiembla y avisa antes de que asome.
+          this.sc.telegraph.marker(this.x, this.y, 0.45, { owner: this, color: 0x79b84a });
         }
         break;
       case 'rising':
@@ -81,7 +86,8 @@ export class Cobra extends Enemy {
         break;
       case 'up':
         this.setFrame(2);
-        if (this.timer < 1.3 - this.shots * 0.6 && this.shots < 2) {
+        // Un abanico por salida (las campeonas, dos).
+        if (this.timer < 1.3 - this.shots * 0.6 && this.shots < (this.champion ? 2 : 1)) {
           this.shots++;
           const base = Math.atan2(this.player.y - 6 - (this.y - 6), this.player.x - this.x);
           const n = this.champion ? 5 : 3;
@@ -103,10 +109,14 @@ export class Cobra extends Enemy {
         this.invulnerable = true;
         if (this.timer <= 0) {
           // Se esconde y reaparece en otro sitio libre.
-          const spot = this.sc.nav.randomFreeTile(this.x, this.y, 90);
-          if (Phaser.Math.Distance.Between(spot.x, spot.y, this.player.x, this.player.y) > 30) {
-            this.setPosition(spot.x, spot.y);
-            this.body.reset(spot.x, spot.y);
+          // Reaparece lejos del payaso (nunca escupe a bocajarro).
+          for (let k = 0; k < 8; k++) {
+            const spot = this.sc.nav.randomFreeTile(this.x, this.y, 110);
+            if (Phaser.Math.Distance.Between(spot.x, spot.y, this.player.x, this.player.y) > 64) {
+              this.setPosition(spot.x, spot.y);
+              this.body.reset(spot.x, spot.y);
+              break;
+            }
           }
           this.state = 'hidden';
           this.timer = Phaser.Math.FloatBetween(1, 1.8);
@@ -120,6 +130,7 @@ export class Cobra extends Enemy {
 export class Oso extends Enemy {
   timer = Phaser.Math.FloatBetween(2, 3.2);
   spin = 0;
+  windup = 0;
   shotT = 0;
   angle = 0;
   t = 0;
@@ -140,12 +151,24 @@ export class Oso extends Enemy {
       if (this.spin <= 0) this.timer = Phaser.Math.FloatBetween(2.6, 3.6);
       return;
     }
+    if (this.windup > 0) {
+      // Aviso: se pone de puntillas y tiembla antes de girar.
+      this.windup -= dt;
+      this.setFrame(2);
+      if (this.windup <= 0) {
+        this.spin = 1.1;
+        this.shotT = 0;
+      }
+      return;
+    }
     this.setFrame(anim(this.t, 3, 2));
     this.chase();
     this.timer -= dt;
     if (this.timer <= 0) {
-      this.spin = 1.1;
-      this.shotT = 0;
+      this.windup = 0.45;
+      this.windupFlash();
+      this.sc.telegraph.circle(this.x, this.y, 34, 0.45, { owner: this });
+      this.sc.snd('aviso');
     }
   }
 }
@@ -155,6 +178,7 @@ export class Loro extends Enemy {
   orbit = Math.random() * Math.PI * 2;
   timer = Phaser.Math.FloatBetween(1.5, 2.5);
   dive = 0;
+  aim = 0;
   dir = new Phaser.Math.Vector2();
   t = 0;
   protected think(dt: number): void {
@@ -167,17 +191,27 @@ export class Loro extends Enemy {
       this.setFlipX(this.dir.x < 0);
       return;
     }
+    const p = this.player;
+    if (this.aim > 0) {
+      // Aviso: se queda quieto apuntando con una línea en el suelo.
+      this.aim -= dt;
+      if (this.aim <= 0) {
+        this.dive = 0.6;
+        this.sc.snd('salto');
+      }
+      return;
+    }
     this.timer -= dt;
     this.orbit += dt * 1.6;
-    const p = this.player;
     this.toward(p.x + Math.cos(this.orbit) * 52, p.y + Math.sin(this.orbit) * 40, this.speed);
     this.setFlipX(this.desired.x < 0);
     if (this.timer <= 0) {
       const a = Math.atan2(p.y - this.y, p.x - this.x);
       this.dir.set(Math.cos(a), Math.sin(a));
-      this.dive = 0.6;
+      this.aim = 0.35;
+      this.windupFlash();
+      this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * 105, this.y + this.dir.y * 105, 0.35, { owner: this, w: 6 });
       this.timer = Phaser.Math.FloatBetween(2, 2.8);
-      this.sc.snd('salto');
     }
   }
 }
@@ -233,10 +267,17 @@ export class Payasito extends Enemy {
   }
   die(): void {
     if (this.dead) return;
-    for (let i = 0; i < 4; i++) {
-      const a = Math.PI / 4 + (i * Math.PI) / 2;
-      this.sc.spawnShot(this.x, this.y, Math.cos(a) * 75, Math.sin(a) * 75, false, { damage: 1, range: 70 });
-    }
+    // Llora al morir: aviso de 0,3 s y cuatro lágrimas en diagonal.
+    const sc = this.sc,
+      x = this.x,
+      y = this.y;
+    sc.telegraph.circle(x, y, 12, 0.3, { color: 0x4f8fd1 });
+    sc.time.delayedCall(300, () => {
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + (i * Math.PI) / 2;
+        sc.spawnShot(x, y, Math.cos(a) * 75, Math.sin(a) * 75, false, { damage: 1, range: 70 });
+      }
+    });
     super.die();
   }
 }

@@ -26,6 +26,12 @@ export interface ShotMods {
   knife?: boolean; // solo aspecto
   poison?: boolean; // veneno lento y largo
   grow?: boolean; // las pelotas crecen con la distancia
+  chain?: boolean; // el golpe salta a otra criatura
+  split?: boolean; // se parte en dos a mitad del alcance
+  explosive?: boolean; // estalla al caer o al dar
+  charge?: boolean; // mantener el disparo lo carga (hasta ×4)
+  crit?: number; // probabilidad base de crítico (la suerte la sube)
+  wave?: boolean; // ondas anchas que atraviesan (megáfono)
 }
 
 export interface StatSource {
@@ -77,6 +83,12 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
     knife: false,
     poison: false,
     grow: false,
+    chain: false,
+    split: false,
+    explosive: false,
+    charge: false,
+    crit: 0,
+    wave: false,
   };
 
   for (const src of sources) {
@@ -106,13 +118,21 @@ export function computeStats(sources: readonly StatSource[]): FinalStats {
       shot.knife ||= !!m.knife;
       shot.poison ||= !!m.poison;
       shot.grow ||= !!m.grow;
+      shot.chain ||= !!m.chain;
+      shot.split ||= !!m.split;
+      shot.explosive ||= !!m.explosive;
+      shot.charge ||= !!m.charge;
+      shot.crit += m.crit ?? 0;
+      shot.wave ||= !!m.wave;
     }
   }
 
   // Varios disparos sin dispersión definida: abanico por defecto.
   if (shot.extraShots > 0 && shot.spread === 0) shot.spread = 10;
 
-  const finalDamage = Math.max(0.5, (BASE.damage + damage) * damageMult);
+  // Por encima de ×3, los multiplicadores rinden la mitad (sin combinaciones infinitas).
+  const mult = damageMult > 3 ? 3 + (damageMult - 3) * 0.5 : damageMult;
+  const finalDamage = Math.max(0.5, (BASE.damage + damage) * mult);
   // La cadencia crece con rendimientos decrecientes.
   const tearsFactor = tears >= 0 ? 1 + 0.22 * tears - 0.006 * tears * tears : 1 / (1 - 0.2 * tears);
   const sps = clamp(BASE.shotsPerSecond * Math.max(0.3, tearsFactor) * tearsMult, 0.7, 9);

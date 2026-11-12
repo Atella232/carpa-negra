@@ -1,7 +1,9 @@
 // Familiares: acompañantes que ayudan a Pompón.
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
-import { DEPTH } from '../config';
+import { DEPTH, ROOM_W } from '../config';
+import { buildVolley } from '../core/volley';
+import { TimeTrail } from '../core/trail';
 import { FamiliarKind } from '../data/items';
 import type { Enemy } from './Enemy';
 
@@ -27,6 +29,20 @@ export abstract class Familiar {
   get y(): number {
     return this.sprite.y;
   }
+  /** Los familiares pegan más cuanto más pega el payaso. */
+  protected get power(): number {
+    return Math.max(1, this.scene.stats.damage / 3.5);
+  }
+}
+
+/** Dispara una ráfaga con los modificadores del payaso desde (x, y). */
+function familiarVolley(sc: GameScene, x: number, y: number, dir: { x: number; y: number }, mult: number): void {
+  const st = sc.stats;
+  for (const v of buildVolley(st, dir, 1)) {
+    sc.spawnShot(x, y, Math.cos(v.angle) * st.shotSpeed, Math.sin(v.angle) * st.shotSpeed, true, {
+      ...v.opts, damage: v.opts.damage * mult, scale: v.opts.scale * 0.8,
+    });
+  }
 }
 
 /** Globo-Perro: da vueltas alrededor del payaso y bloquea disparos. */
@@ -50,7 +66,7 @@ export class GloboPerro extends Familiar {
     if (this.touchCd <= 0) {
       const e = this.scene.nearestEnemy(this.x, this.y, 10);
       if (e) {
-        e.damage(3, this.sprite, 30);
+        e.damage(3 * this.power, this.sprite, 30);
         this.touchCd = 0.3;
       }
     }
@@ -59,7 +75,8 @@ export class GloboPerro extends Familiar {
 
 /** Mono de Juguete: te sigue y dispara cuando tú disparas. */
 export class MonoJuguete extends Familiar {
-  trail: { x: number; y: number }[] = [];
+  /** Va 13/60 s por detrás del payaso (antes, 13 fotogramas). */
+  trail = new TimeTrail(0.5);
   cd = 0;
   constructor(scene: GameScene) {
     super(scene, 'mono_juguete');
@@ -68,9 +85,8 @@ export class MonoJuguete extends Familiar {
     this.t += dt;
     this.cd = Math.max(0, this.cd - dt);
     const p = this.scene.player;
-    this.trail.push({ x: p.x, y: p.y });
-    if (this.trail.length > 14) this.trail.shift();
-    const target = this.trail[0];
+    this.trail.push(p.x, p.y, dt);
+    const target = this.trail.at(13 / 60)!;
     this.sprite.x += (target.x - this.sprite.x) * Math.min(1, dt * 8);
     this.sprite.y += (target.y - this.sprite.y) * Math.min(1, dt * 8);
     this.sprite.setFrame(Math.floor(this.t * 6) % 2);
@@ -79,13 +95,12 @@ export class MonoJuguete extends Familiar {
   fire(dir: { x: number; y: number }): void {
     if (this.cd > 0) return;
     this.cd = 0.5;
-    this.scene.spawnShot(this.x, this.y - 4, dir.x * 170, dir.y * 170, true, {
-      damage: 3, range: 110, scale: 0.75,
-    });
+    // Dispara con tus modificadores (a la mitad de fuerza).
+    familiarVolley(this.scene, this.x, this.y - 4, dir, 0.5);
   }
   reset(): void {
     super.reset();
-    this.trail = [];
+    this.trail.clear();
   }
 }
 
@@ -191,14 +206,98 @@ export class Leoncito extends Familiar {
     this.sprite.setFrame(d > 3 ? Math.floor(this.t * 8) % 2 : 0);
     this.sprite.setDepth(DEPTH.world + this.sprite.y);
     if (e && this.biteCd <= 0 && d < 12) {
-      e.damage(4, this.sprite, 30);
+      e.damage(4 * this.power, this.sprite, 30);
       this.biteCd = 0.4;
     }
   }
 }
 
+/** Doble de Riesgo: tu reflejo al otro lado de la sala; dispara en espejo. */
+export class Doble extends Familiar {
+  constructor(scene: GameScene) {
+    super(scene, 'doble');
+    this.sprite.setAlpha(0.75);
+  }
+  update(dt: number): void {
+    this.t += dt;
+    const p = this.scene.player;
+    const tx = ROOM_W - p.x,
+      ty = p.y;
+    this.sprite.x += (tx - this.sprite.x) * Math.min(1, dt * 10);
+    this.sprite.y += (ty - this.sprite.y) * Math.min(1, dt * 10);
+    this.sprite.setFlipX(p.vel.x > 0);
+    this.sprite.setFrame(Math.abs(p.vel.x) + Math.abs(p.vel.y) > 8 ? Math.floor(this.t * 8) % 2 : 0);
+    this.sprite.setDepth(DEPTH.world + this.sprite.y);
+  }
+  fire(dir: { x: number; y: number }): void {
+    familiarVolley(this.scene, this.x, this.y - 8, { x: -dir.x, y: dir.y }, 0.5);
+  }
+}
+
+/** Sombra Alquilada: te sigue y repite cada ráfaga un poco después. */
+export class Sombra extends Familiar {
+  trail = new TimeTrail(0.6);
+  constructor(scene: GameScene) {
+    super(scene, 'sombra_alquilada');
+    this.sprite.setAlpha(0.6);
+  }
+  update(dt: number): void {
+    const p = this.scene.player;
+    this.trail.push(p.x, p.y, dt);
+    const at = this.trail.at(0.3)!;
+    this.sprite.setPosition(at.x, at.y);
+    this.sprite.setDepth(DEPTH.world + at.y - 1);
+  }
+  fire(dir: { x: number; y: number }): void {
+    this.scene.time.delayedCall(300, () => familiarVolley(this.scene, this.x, this.y - 8, dir, 0.4));
+  }
+  reset(): void {
+    super.reset();
+    this.trail.clear();
+  }
+}
+
+/** Foco de Teatro: ilumina hacia donde apuntas; lo iluminado recibe más daño. */
+export class Foco extends Familiar {
+  private beam: Phaser.GameObjects.Image;
+  constructor(scene: GameScene) {
+    super(scene, 'foco');
+    this.beam = scene.add.image(0, 0, 'haz').setAlpha(0.22).setOrigin(0, 0.5).setDepth(DEPTH.decal + 1);
+  }
+  update(dt: number): void {
+    this.t += dt;
+    const p = this.scene.player;
+    const d = p.lastShotDir;
+    const a = Math.atan2(d.y, d.x);
+    this.sprite.setPosition(p.x - Math.cos(a) * 10, p.y - 14);
+    this.sprite.setDepth(DEPTH.world + p.y + 2);
+    this.beam.setPosition(p.x, p.y - 4).setRotation(a);
+    for (const e of this.scene.targets()) {
+      const ex = e.x - p.x,
+        ey = e.y - p.y;
+      const along = ex * d.x + ey * d.y;
+      const side = Math.abs(ex * d.y - ey * d.x);
+      if (along > 0 && along < 90 && side < 8 + along * 0.35) e.litT = 0.15;
+    }
+    if (this.scene.dark) this.scene.dark.extra.push({ x: p.x + d.x * 40, y: p.y + d.y * 40, r: 32 });
+  }
+  reset(): void {
+    super.reset();
+  }
+  destroy(): void {
+    this.beam.destroy();
+    super.destroy();
+  }
+}
+
 export function createFamiliar(scene: GameScene, kind: FamiliarKind): Familiar {
   switch (kind) {
+    case 'doble':
+      return new Doble(scene);
+    case 'sombra':
+      return new Sombra(scene);
+    case 'foco':
+      return new Foco(scene);
     case 'globoPerro':
       return new GloboPerro(scene);
     case 'monoJuguete':

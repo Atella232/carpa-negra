@@ -19,9 +19,31 @@ export type FloorStyle =
   | 'secreta'
   | 'contrato'
   | 'jaulas'
-  | 'guarida';
+  | 'guarida'
+  // Acto III
+  | 'espejos'
+  | 'mil_espejos'
+  | 'pitonisa'
+  | 'reto'
+  // Acto IV
+  | 'pista'
+  | 'pista_central';
 
-const STYLE: Record<FloorStyle, { floor: string; dot: string; stripeA: string; stripeB: string; ring?: string; bars?: boolean; straw?: boolean }> = {
+const STYLE: Record<FloorStyle, {
+  floor: string; dot: string; stripeA: string; stripeB: string; ring?: string; bars?: boolean; straw?: boolean;
+  /** Suelo ajedrezado (Acto III). */
+  checker?: string;
+  /** Marcos de espejo en las paredes (Acto III). */
+  frames?: boolean;
+  /** Gradas con público en las paredes (Acto IV). */
+  crowd?: boolean;
+}> = {
+  espejos: { floor: '#1d1424', dot: '#2e1f38', stripeA: '#4a2f5c', stripeB: '#1d1424', checker: '#2a1d36', frames: true },
+  mil_espejos: { floor: '#120c16', dot: '#1d1424', stripeA: '#7a4a8c', stripeB: '#120c16', checker: '#1d1424', frames: true, ring: '#c9b3ef' },
+  pitonisa: { floor: '#2a1430', dot: '#3a1d44', stripeA: '#4a2f5c', stripeB: '#1d1424', ring: '#c9b3ef' },
+  reto: { floor: '#3a1a10', dot: '#4f2614', stripeA: '#8f1d2c', stripeB: '#1d1424', ring: '#e8743b' },
+  pista: { floor: '#6b4a2a', dot: '#8a6236', stripeA: '#8f1d2c', stripeB: '#efe6d8', crowd: true },
+  pista_central: { floor: '#5a3b20', dot: '#7a5233', stripeA: '#8f1d2c', stripeB: '#f2c14e', ring: '#f2c14e', crowd: true },
   jaulas: { floor: '#4a4020', dot: '#6b5a28', stripeA: '#1f3320', stripeB: '#0f1a12', bars: true, straw: true },
   guarida: { floor: '#3a2a14', dot: '#54401c', stripeA: '#2a1a0c', stripeB: '#0f0a06', ring: '#6b1a24', bars: true, straw: true },
   normal: { floor: '#5a3b25', dot: '#7a5233', stripeA: '#5e1420', stripeB: '#2a1430' },
@@ -49,6 +71,12 @@ export function bakeRoomBackground(
     p.rect(0, 0, ROOM_W, ROOM_H, s.floor);
     for (let i = 0; i < 520; i++) {
       p.px(rng.int(16, ROOM_W - 17), rng.int(16, ROOM_H - 17), rng.chance(0.7) ? s.dot : '#2e1c12');
+    }
+    // Suelo ajedrezado (Acto III).
+    if (s.checker) {
+      for (let y = 16; y < ROOM_H - 16; y += 16)
+        for (let x = 16; x < ROOM_W - 16; x += 16) if (((x + y) / 16) % 2 === 0) p.rect(x, y, 16, 16, s.checker);
+      for (let i = 0; i < 40; i++) p.px(rng.int(16, ROOM_W - 17), rng.int(16, ROOM_H - 17), '#c9b3ef');
     }
     // Paja esparcida por el suelo (Acto II).
     if (s.straw) {
@@ -79,6 +107,24 @@ export function bakeRoomBackground(
       for (let y = 20; y < ROOM_H - 16; y += 8) {
         p.rect(0, y, 14, 2, '#55505e');
         p.rect(ROOM_W - 14, y, 14, 2, '#55505e');
+      }
+    }
+    // Marcos de espejo en las paredes (Acto III).
+    if (s.frames) {
+      for (let x = 24; x < ROOM_W - 24; x += 32) {
+        if (Math.abs(x + 6 - ROOM_W / 2) < 14) continue;
+        p.rect(x, 2, 12, 12, '#f2c14e').rect(x + 1, 3, 10, 10, '#c9b3ef').line(x + 2, 4, x + 8, 11, '#ffffff');
+      }
+    }
+    // Gradas con público (Acto IV): siluetas y ojos que brillan.
+    if (s.crowd) {
+      for (let x = 2; x < ROOM_W - 2; x += 5) {
+        if (Math.abs(x - ROOM_W / 2) < 12) continue;
+        const h = rng.int(4, 7);
+        p.rect(x, 14 - h, 4, h, '#0b0710').disc(x + 2, 14 - h, 2, '#0b0710');
+        if (rng.chance(0.4)) p.px(x + 1, 14 - h, '#f2c14e').px(x + 3, 14 - h, '#f2c14e');
+        const hb = rng.int(4, 7);
+        p.rect(x, ROOM_H - 14, 4, hb, '#0b0710').disc(x + 2, ROOM_H - 14 + hb, 2, '#0b0710');
       }
     }
     // Sombra interior junto a las paredes.
@@ -294,7 +340,9 @@ export type DoorStyle =
   | 'diana'
   | 'barraca'
   | 'secreta'
-  | 'contrato';
+  | 'contrato'
+  | 'pitonisa'
+  | 'reto';
 
 /** Puertas: orientación "superior" (32×16); las demás se rotan. 0 abierta, 1 cerrada. */
 export function doorSprite(style: DoorStyle): SpriteDef {
@@ -307,6 +355,8 @@ export function doorSprite(style: DoorStyle): SpriteDef {
     barraca: { a: 'b', b: 'B', trim: 'y' },
     secreta: { a: 'S', b: 's', trim: 'S' },
     contrato: { a: 'k', b: 'e', trim: 'R' },
+    pitonisa: { a: 'p', b: 'h', trim: 'y' },
+    reto: { a: 'o', b: 'R', trim: 'Y' },
   };
   const s = frame[style];
   return {
@@ -343,6 +393,8 @@ export function doorSprite(style: DoorStyle): SpriteDef {
       if (style === 'puesto') p.rect(12, 0, 8, 2, 'y').rect(15, 0, 2, 2, 'R');
       if (style === 'barraca') for (let x = 5; x < 28; x += 4) p.px(x, 0, x % 8 === 1 ? 'W' : 'R');
       if (style === 'contrato') p.ellipse(15.5, 1, 3, 1.2, 'R').px(15, 1, 'k');
+      if (style === 'pitonisa') p.disc(15.5, 1, 2, 'h').px(15, 0, 'W');
+      if (style === 'reto') p.rect(15, 0, 2, 2, 'W').px(15, 0, 'R');
     },
   };
 }

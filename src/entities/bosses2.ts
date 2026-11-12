@@ -2,8 +2,8 @@
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { Enemy } from './Enemy';
-import { spawnCreature } from './creatures';
 import { DEPTH } from '../config';
+import { TimeTrail } from '../core/trail';
 
 /** La Bestia: ruge en anillos, salta encima y llama a sus payasitos. */
 export class Bestia extends Enemy {
@@ -17,7 +17,7 @@ export class Bestia extends Enemy {
   t = 0;
 
   constructor(scene: GameScene, x: number, y: number) {
-    super(scene, x, y, 'bestia', { hp: 380, speed: 34, body: { w: 26, h: 18, dy: 9 }, name: 'La Bestia', fixedHp: true });
+    super(scene, x, y, 'bestia', { hp: 330, speed: 34, body: { w: 26, h: 18, dy: 9 }, name: 'La Bestia', fixedHp: true });
     this.isBoss = true;
     this.wake = 1.4;
     this.contact = 2;
@@ -51,8 +51,6 @@ export class Bestia extends Enemy {
       case 'crouch':
         this.setFrame(2);
         if (this.timer <= 0) {
-          const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
-          this.dir.set(Math.cos(a), Math.sin(a));
           this.state = 'pounce';
           this.pounceT = 0;
           this.flying = true;
@@ -75,7 +73,8 @@ export class Bestia extends Enemy {
           if (this.pouncesLeft > 0) {
             this.pouncesLeft--;
             this.state = 'crouch';
-            this.timer = 0.3;
+            this.timer = 0.4;
+            this.aimPounce(0.4);
           } else {
             this.state = 'walk';
             this.timer = Phaser.Math.FloatBetween(1, 1.6) / rage;
@@ -87,7 +86,7 @@ export class Bestia extends Enemy {
 
   private pick(): void {
     this.minions = this.minions.filter((m) => m.active && !m.dead);
-    const options = ['roar', 'pounce', ...(this.minions.length < 3 ? ['summon'] : [])].filter((a) => a !== this.last);
+    const options = ['roar', 'pounce', ...(this.minions.length < 2 ? ['summon'] : [])].filter((a) => a !== this.last);
     const a = Phaser.Utils.Array.GetRandom(options) as string;
     this.last = a;
     if (a === 'roar') {
@@ -97,11 +96,12 @@ export class Bestia extends Enemy {
       this.state = 'crouch';
       this.timer = 0.55;
       this.pouncesLeft = this.enraged ? 1 : 0;
+      this.aimPounce(0.55);
     } else {
       this.sc.snd('jefe');
       for (const dx of [-28, 28]) {
         const x = Phaser.Math.Clamp(this.x + dx, 30, 210);
-        const m = spawnCreature(this.sc, 'payasito', x, Phaser.Math.Clamp(this.y + 10, 30, 115));
+        const m = this.sc.spawn('payasito', x, Phaser.Math.Clamp(this.y + 10, 30, 115));
         this.minions.push(m);
       }
       this.state = 'walk';
@@ -109,12 +109,24 @@ export class Bestia extends Enemy {
     }
   }
 
+  /** Apunta el salto y lo avisa con una línea y la zona donde caerá. */
+  private aimPounce(dur: number): void {
+    const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+    this.dir.set(Math.cos(a), Math.sin(a));
+    const len = 230 * 0.5;
+    const ex = Phaser.Math.Clamp(this.x + this.dir.x * len, 24, 216),
+      ey = Phaser.Math.Clamp(this.y + this.dir.y * len, 24, 120);
+    this.sc.telegraph.line(this.x, this.y, ex, ey, dur, { owner: this, w: 16 });
+    this.sc.telegraph.circle(ex, ey, 22, dur + 0.5, { owner: this });
+    this.windupFlash();
+  }
+
   private roar(): void {
     this.sc.snd('pisoton');
     this.sc.shake(300, 0.012);
     this.sc.shockwave(this.x, this.y);
     const ring = (offset: number) => {
-      const n = this.enraged ? 18 : 14;
+      const n = this.enraged ? 16 : 12;
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + offset;
         this.sc.spawnShot(this.x, this.y - 4, Math.cos(a) * 85, Math.sin(a) * 85, false, { damage: 1, range: 170 });
@@ -122,10 +134,10 @@ export class Bestia extends Enemy {
     };
     ring(0);
     if (this.enraged) this.sc.time.delayedCall(350, () => this.active && !this.dead && ring(Math.PI / 18));
-    // El rugido empuja al payaso.
+    // El rugido empuja al payaso (sin lanzarlo contra sus propias balas).
     const p = this.player;
     const a = Math.atan2(p.y - this.y, p.x - this.x);
-    p.vel.set(Math.cos(a) * 200, Math.sin(a) * 200);
+    p.vel.set(Math.cos(a) * 110, Math.sin(a) * 110);
   }
 
   private land(): void {
@@ -136,9 +148,9 @@ export class Bestia extends Enemy {
     this.timer = 0.6;
     this.sc.snd('pisoton');
     this.sc.shake(160, 0.01);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      this.sc.spawnShot(this.x, this.y + 4, Math.cos(a) * 95, Math.sin(a) * 95, false, { damage: 1, range: 110 });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      this.sc.spawnShot(this.x, this.y + 4, Math.cos(a) * 90, Math.sin(a) * 90, false, { damage: 1, range: 100 });
     }
   }
 
@@ -151,7 +163,8 @@ export class Bestia extends Enemy {
 /** Cabeza de La Mujer Serpiente. Su cuerpo son segmentos que la siguen. */
 export class SerpienteCabeza extends Enemy {
   segments: SerpienteSegmento[] = [];
-  trail: { x: number; y: number }[] = [];
+  /** Cada segmento va (índice+1)·5/60 s por detrás de la cabeza, a cualquier tasa de refresco. */
+  trail = new TimeTrail(1.2);
   heading = Math.PI / 2;
   spitT = 2;
   dropT = 3;
@@ -185,12 +198,16 @@ export class SerpienteCabeza extends Enemy {
     this.spitT -= dt;
     if (this.spitT <= 0) {
       this.spitT = (this.enraged ? 1.6 : 2.4) + Math.random() * 0.5;
+      // Aviso: abre la boca y apunta 0,35 s antes de escupir.
+      this.windupFlash();
       const base = Math.atan2(this.player.y - 4 - this.y, this.player.x - this.x);
-      for (let i = 0; i < 5; i++) {
-        const a = base + (i - 2) * 0.2;
-        this.sc.spawnShot(this.x, this.y, Math.cos(a) * 110, Math.sin(a) * 110, false, { damage: 1, range: 200, texture: 'bala_veneno' });
-      }
-      this.sc.snd('golosina');
+      this.sc.telegraph.line(this.x, this.y, this.x + Math.cos(base) * 80, this.y + Math.sin(base) * 80, 0.35, { owner: this, color: 0x79b84a });
+      this.sc.snd('aviso');
+      this.after(0.35, () => {
+        // Escupe hacia donde avisó (justo y legible).
+        this.fan(5, 0.2, 110, { texture: 'bala_veneno' }, base);
+        this.sc.snd('golosina');
+      });
     }
     if (this.enraged) {
       this.dropT -= dt;
@@ -208,8 +225,7 @@ export class SerpienteCabeza extends Enemy {
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
     if (this.dead || !this.active) return;
-    this.trail.unshift({ x: this.x, y: this.y });
-    if (this.trail.length > 140) this.trail.pop();
+    this.trail.push(this.x, this.y, Math.min(0.05, delta / 1000));
     for (const s of this.segments) s.follow(this.trail);
   }
 
@@ -229,7 +245,7 @@ export class SerpienteCabeza extends Enemy {
 
 export class SerpienteSegmento extends Enemy {
   constructor(scene: GameScene, x: number, y: number, public head: SerpienteCabeza, public index: number) {
-    super(scene, x, y, 'serpiente_cuerpo', { hp: 9999, speed: 0, flying: true, body: { w: 10, h: 8, dy: 0 }, name: 'Cuerpo', fixedHp: true });
+    super(scene, x, y, 'serpiente_cuerpo', { hp: 9999, speed: 0, flying: true, body: { w: 10, h: 8, dy: 0 }, name: 'Cuerpo', fixedHp: true, noSmoke: true });
     this.countsForClear = false;
     this.isBoss = true;
     this.wake = 1.4;
@@ -238,8 +254,8 @@ export class SerpienteSegmento extends Enemy {
   protected think(): void {
     /* lo mueve la cabeza */
   }
-  follow(trail: { x: number; y: number }[]): void {
-    const p = trail[Math.min(trail.length - 1, (this.index + 1) * 5)];
+  follow(trail: TimeTrail): void {
+    const p = trail.at(((this.index + 1) * 5) / 60);
     if (!p) return;
     this.setPosition(p.x, p.y + 2);
     this.body.reset(p.x, p.y + 2);

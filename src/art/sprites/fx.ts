@@ -2,14 +2,19 @@
 import { ascii, SpriteDef } from '../bake';
 
 export const FX_SPRITES: Record<string, SpriteDef> = {
+  // Pelotas del payaso: turquesa y blanco, para no confundirse con las balas rojas.
   pelota: ascii([
-    ['..RR..', '.RRRy.', 'RRWyyy', 'RRyyyy', '.yyyy.', '..yy..'],
+    ['..cc..', '.cCCW.', 'cCWWCC', 'cCCCCC', '.cCCc.', '..cc..'],
   ]),
   pelota_fuego: ascii([
     ['..oy..', '.oyYo.', 'oyWYyo', 'oyYYyo', '.oyyo.', '..oo..'],
   ]),
   cuchillo: ascii([['XXXXXXgnn.', 'xxxxxxxnnn', '.......nn.']]),
-  bala: ascii([['.rr.', 'rRmr', 'rRRr', '.rr.']]),
+  // Balas enemigas: más grandes que su cuerpo de choque, con núcleo claro que late.
+  bala: ascii([
+    ['.rRr.', 'rRmRr', 'RmWmR', 'rRmRr', '.rRr.'],
+    ['.rrr.', 'rRRRr', 'RRmRR', 'rRRRr', '.rrr.'],
+  ], 'k'),
   bala_grande: ascii([
     ['..rrr..', '.rRRRr.', 'rRmmRRr', 'rRmRRRr', 'rRRRRRr', '.rRRRr.', '..rrr..'],
   ]),
@@ -49,6 +54,70 @@ export const FX_SPRITES: Record<string, SpriteDef> = {
       if (f < 2) p.disc(5.5, 5.5, 2 - f, 'W');
     },
   },
+  // Impacto de las pelotas turquesa.
+  salpicadura_azul: {
+    w: 12,
+    h: 12,
+    frames: 4,
+    outline: false,
+    paint: (p, f) => {
+      const r = 2 + f * 1.4;
+      const c = f < 2 ? 'W' : f < 3 ? 'C' : 'c';
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + f * 0.3;
+        p.px(5.5 + Math.cos(a) * r, 5.5 + Math.sin(a) * r, c);
+      }
+      if (f < 2) p.disc(5.5, 5.5, 2 - f, 'W');
+    },
+  },
+  // Viñeta roja al recibir daño (se estira a toda la sala).
+  vineta: {
+    w: 60,
+    h: 36,
+    outline: false,
+    paint: (p) => {
+      for (let y = 0; y < 36; y++)
+        for (let x = 0; x < 60; x++) {
+          const dx = Math.abs(x - 29.5) / 30, dy = Math.abs(y - 17.5) / 18;
+          const d = Math.max(dx, dy);
+          if (d > 0.72) p.px(x, y, `rgba(212,50,63,${Math.min(0.85, (d - 0.72) * 3).toFixed(2)})`);
+        }
+    },
+  },
+  // Humo de aparición y de teletransporte.
+  humo: {
+    w: 14,
+    h: 14,
+    frames: 4,
+    outline: false,
+    paint: (p, f) => {
+      const r = 2.5 + f * 1.5;
+      const a = ['rgba(194,188,203,0.9)', 'rgba(194,188,203,0.7)', 'rgba(138,131,148,0.5)', 'rgba(138,131,148,0.25)'][f];
+      for (let i = 0; i < 5; i++) {
+        const an = (i / 5) * Math.PI * 2 + f;
+        p.disc(6.5 + Math.cos(an) * r * 0.6, 6.5 + Math.sin(an) * r * 0.6, r * 0.6, a);
+      }
+    },
+  },
+  polvo: ascii([['.g.', 'gGg', '.g.']], false),
+  // Forma de cada golosina (además del color): rosa, verde, azul, amarilla, morada, naranja, blanca.
+  formas_golosina: ascii([
+    ['.k.', 'kkk', '.k.'],
+    ['kkk', 'k.k', 'kkk'],
+    ['.k.', 'k.k', 'kkk'],
+    ['k.k', '.k.', 'k.k'],
+    ['kkk', '...', 'kkk'],
+    ['k..', 'kk.', 'kkk'],
+    ['.k.', '.k.', '.k.'],
+  ], false),
+  // Insignias de campeón: + resistente, » veloz, ✶ estalla, $ boletos.
+  insignias: ascii([
+    ['..R..', '..R..', 'RRRRR', '..R..', '..R..'],
+    ['y..y.', '.y..y', '..y..', '.y..y', 'y..y.'],
+    ['B.B.B', '.BBB.', 'BBBBB', '.BBB.', 'B.B.B'],
+    ['.yyy.', 'y.y..', '.yyy.', '..y.y', '.yyy.'],
+  ], 'k'),
+  chispa: ascii([['W']], false),
   salpicadura_roja: {
     w: 12,
     h: 12,

@@ -1,9 +1,9 @@
 // Recogibles, pedestales de objetos, petardos, obstáculos y fuego.
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
-import { DEPTH } from '../config';
+import { DEPTH, ROOM_H, ROOM_W, TILE } from '../config';
 import { PickupKind } from '../core/run';
-import { GOLOSINA_TINT, GolosinaColor } from '../data/golosinas';
+import { GOLOSINA_COLORS, GOLOSINA_TINT, GolosinaColor } from '../data/golosinas';
 import { txt } from '../ui/text';
 
 const PICKUP_TEX: Record<PickupKind, string> = {
@@ -22,6 +22,7 @@ const PICKUP_TEX: Record<PickupKind, string> = {
 
 export class Pickup extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
+  private shape: Phaser.GameObjects.Image | null = null;
   kind: PickupKind;
   price: number;
   color?: GolosinaColor;
@@ -45,7 +46,11 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
     const chest = kind === 'cofre' || kind === 'cofre_candado';
     this.body.setSize(Math.min(this.width, 12), Math.min(this.height, 10));
     if (chest) this.body.setImmovable(true);
-    if (kind === 'golosina' && this.color) this.setTint(GOLOSINA_TINT[this.color]);
+    if (kind === 'golosina' && this.color) {
+      this.setTint(GOLOSINA_TINT[this.color]);
+      // Forma propia de cada color (para quien no distingue colores).
+      this.shape = scene.add.image(x, y, 'formas_golosina', GOLOSINA_COLORS.indexOf(this.color)).setDepth(DEPTH.world + y + 1);
+    }
     this.body.setVelocity(opts.vx ?? 0, opts.vy ?? 0);
     this.shadow = scene.add.image(x, y + 6, 'sombra').setScale(0.7).setDepth(DEPTH.shadow);
     if (this.price > 0) {
@@ -58,15 +63,23 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
 
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
-    const dt = delta / 1000;
+    const dt = Math.min(0.05, delta / 1000);
     this.delay = Math.max(0, this.delay - dt);
     this.t += dt;
+    // Un petardo puede lanzarlo lejos, pero nunca fuera de la sala.
+    const cx = Phaser.Math.Clamp(this.x, TILE + 4, ROOM_W - TILE - 4);
+    const cy = Phaser.Math.Clamp(this.y, TILE + 4, ROOM_H - TILE - 4);
+    if (cx !== this.x || cy !== this.y) {
+      this.setPosition(cx, cy);
+      this.body.reset(cx, cy);
+    }
     const bob = this.kind.startsWith('globo') || this.kind === 'medio_globo' ? Math.sin(this.t * 3) * 1.5 : 0;
     this.setDisplayOrigin(this.width / 2, this.height / 2 + bob);
     this.body.setOffset((this.width - this.body.width) / 2, (this.height - this.body.height) / 2 + bob);
     this.setDepth(DEPTH.world + this.y);
     this.shadow.setPosition(this.x, this.y + this.height / 2 - 2);
     this.label?.setPosition(this.x, this.y + 8);
+    this.shape?.setPosition(this.x, this.y).setDepth(this.depth + 0.1).setAlpha(this.alpha);
   }
 
   open(): void {
@@ -77,6 +90,7 @@ export class Pickup extends Phaser.Physics.Arcade.Sprite {
   destroy(fromScene?: boolean): void {
     this.shadow?.destroy();
     this.label?.destroy();
+    this.shape?.destroy();
     super.destroy(fromScene);
   }
 }
@@ -155,7 +169,7 @@ export class Bomb extends Phaser.Physics.Arcade.Sprite {
   }
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
-    this.fuse -= delta / 1000;
+    this.fuse -= Math.min(0.05, delta / 1000);
     const blink = this.fuse < 0.5 ? 18 : 8;
     if (Math.floor(this.fuse * blink) % 2 === 0) this.setTintFill(0xffffff);
     else this.clearTint();
@@ -217,7 +231,7 @@ export class Fire extends Phaser.GameObjects.Sprite {
   }
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
-    const dt = delta / 1000;
+    const dt = Math.min(0.05, delta / 1000);
     this.t += dt;
     this.life -= dt;
     this.setFrame(Math.floor(this.t * 10) % 3);

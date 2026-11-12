@@ -112,3 +112,18 @@ export class RngStreams {
     return r;
   }
 }
+
+/** Estado de todos los flujos (para guardar la partida). */
+export function snapshotStreams(s: RngStreams): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, r] of (s as unknown as { streams: Map<string, Rng> }).streams) out[k] = r.state;
+  return out;
+}
+
+/** Recrea los flujos con el estado guardado. */
+export function restoreStreams(seed: string, saved: Record<string, number>): RngStreams {
+  const s = new RngStreams(seed);
+  const map = (s as unknown as { streams: Map<string, Rng> }).streams;
+  for (const [k, v] of Object.entries(saved)) map.set(k as StreamName, new Rng(v));
+  return s;
+}

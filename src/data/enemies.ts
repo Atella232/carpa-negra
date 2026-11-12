@@ -14,9 +14,29 @@ export type EnemyKind =
   | 'oso'
   | 'loro'
   | 'domador'
-  | 'payasito';
+  | 'payasito'
+  // Acto III
+  | 'reflejo'
+  | 'bailarina'
+  | 'ilusionista'
+  | 'senuelo'
+  | 'munieco'
+  | 'ventrilocuo'
+  | 'tragasables'
+  | 'cabezudo'
+  | 'cabecita'
+  | 'orbe'
+  | 'copia'
+  // Acto IV
+  | 'trapecista'
+  | 'hombreBala'
+  | 'zancudo'
+  | 'augusto'
+  | 'acomodador'
+  | 'barbuda'
+  | 'guante';
 
-export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente';
+export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente' | 'reflejo' | 'fortuna' | 'maestro';
 
 export interface EnemyDef {
   kind: EnemyKind;
@@ -57,6 +77,26 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   loro: { kind: 'loro', name: 'Loro carroñero', hp: 8, speed: 60, flying: true, texture: 'loro', body: { w: 10, h: 9, dy: 0 } },
   domador: { kind: 'domador', name: 'Domador zombi', hp: 20, speed: 30, texture: 'domador', body: { w: 10, h: 12, dy: 4 } },
   payasito: { kind: 'payasito', name: 'Payasito triste', hp: 5, speed: 55, texture: 'payasito', body: { w: 8, h: 8, dy: 2 } },
+  // --- Acto III: La Casa de los Espejos ---
+  reflejo: { kind: 'reflejo', name: 'Reflejo roto', hp: 14, speed: 60, texture: 'reflejo', body: { w: 9, h: 10, dy: 4 } },
+  bailarina: { kind: 'bailarina', name: 'Bailarina de caja de música', hp: 14, speed: 95, texture: 'bailarina', body: { w: 9, h: 10, dy: 4 } },
+  ilusionista: { kind: 'ilusionista', name: 'Ilusionista', hp: 18, speed: 0, texture: 'ilusionista', body: { w: 10, h: 12, dy: 4 } },
+  senuelo: { kind: 'senuelo', name: 'Señuelo', hp: 1, speed: 0, texture: 'ilusionista', body: { w: 10, h: 12, dy: 4 } },
+  munieco: { kind: 'munieco', name: 'Muñeco', hp: 12, speed: 40, texture: 'munieco', body: { w: 9, h: 9, dy: 3 } },
+  ventrilocuo: { kind: 'ventrilocuo', name: 'Ventrílocuo', hp: 20, speed: 32, texture: 'ventrilocuo', body: { w: 10, h: 12, dy: 4 } },
+  tragasables: { kind: 'tragasables', name: 'Tragasables', hp: 24, speed: 30, texture: 'tragasables', body: { w: 10, h: 12, dy: 4 } },
+  cabezudo: { kind: 'cabezudo', name: 'Cabezudo', hp: 30, speed: 22, texture: 'cabezudo', body: { w: 14, h: 12, dy: 4 } },
+  cabecita: { kind: 'cabecita', name: 'Cabecita', hp: 7, speed: 70, texture: 'cabecita', body: { w: 8, h: 8, dy: 1 } },
+  orbe: { kind: 'orbe', name: 'Orbe de la Luna', hp: 6, speed: 34, flying: true, texture: 'orbe', body: { w: 8, h: 8, dy: 0 } },
+  copia: { kind: 'copia', name: 'Tu Reflejo', hp: 1, speed: 60, texture: 'tu_reflejo', body: { w: 10, h: 12, dy: 4 } },
+  // --- Acto IV: La Pista Central ---
+  trapecista: { kind: 'trapecista', name: 'Trapecista', hp: 16, speed: 0, flying: true, texture: 'trapecista', body: { w: 10, h: 10, dy: 0 } },
+  hombreBala: { kind: 'hombreBala', name: 'Hombre bala', hp: 22, speed: 26, texture: 'hombre_bala', body: { w: 10, h: 12, dy: 4 } },
+  zancudo: { kind: 'zancudo', name: 'Zancudo', hp: 26, speed: 0, texture: 'zancudo', body: { w: 10, h: 10, dy: 8 } },
+  augusto: { kind: 'augusto', name: 'Augusto', hp: 20, speed: 28, texture: 'augusto', body: { w: 10, h: 12, dy: 4 } },
+  acomodador: { kind: 'acomodador', name: 'Acomodador', hp: 14, speed: 40, texture: 'acomodador', body: { w: 9, h: 12, dy: 4 } },
+  barbuda: { kind: 'barbuda', name: 'Mujer Barbuda', hp: 60, speed: 26, texture: 'barbuda', body: { w: 14, h: 14, dy: 5 } },
+  guante: { kind: 'guante', name: 'Guante', hp: 9999, speed: 0, flying: true, texture: 'guante', body: { w: 14, h: 12, dy: 0 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -75,6 +115,31 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   r: 'loro',
   d: 'domador',
   p: 'payasito',
+  // Acto III
+  e: 'reflejo',
+  a: 'bailarina',
+  i: 'ilusionista',
+  n: 'munieco',
+  q: 'ventrilocuo',
+  s: 'tragasables',
+  w: 'cabezudo',
+  // Acto IV
+  t: 'trapecista',
+  h: 'hombreBala',
+  z: 'zancudo',
+  x: 'augusto',
+  y: 'acomodador',
+  B: 'barbuda',
+};
+
+/** Color de los restos al morir. */
+export const GIB_COLOR: Partial<Record<string, number>> = {
+  mimo: 0xefe6d8, polilla: 0xf2c14e, mono: 0xa8673b, lanzacuchillos: 0xd4323f, caja: 0xa8673b,
+  monociclista: 0x4f8fd1, tragafuegos: 0xe8743b, pulga: 0x6b3e26, leon: 0xa8673b, cobra: 0x79b84a,
+  oso: 0x6b3e26, loro: 0xd4323f, domador: 0x8a8394, payasito: 0xf2a3b5,
+  reflejo: 0xe4e2ec, bailarina: 0xf2a3b5, ilusionista: 0x4a2f5c, munieco: 0xd6a66b, ventrilocuo: 0x2b4f7a,
+  tragasables: 0xa3a0ad, cabezudo: 0xf2a3b5, cabecita: 0xf2a3b5, orbe: 0xc9b3ef, tu_reflejo: 0x7fd1b9,
+  trapecista: 0xd9627f, hombre_bala: 0xd4323f, zancudo: 0x2b4f7a, augusto: 0xe8743b, acomodador: 0xf2c14e, barbuda: 0x6b3e26,
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';
@@ -91,6 +156,9 @@ export const BOSS_NAMES: Record<BossKind, string> = {
   siameses: 'Los Siameses',
   bestia: 'La Bestia de la Jaula',
   serpiente: 'La Mujer Serpiente',
+  reflejo: 'Tu Reflejo',
+  fortuna: 'Madame Fortuna',
+  maestro: 'El Maestro de Ceremonias',
 };
 
 export const BOSS_TAGLINES: Record<BossKind, string> = {
@@ -98,4 +166,7 @@ export const BOSS_TAGLINES: Record<BossKind, string> = {
   siameses: 'Dos cabezas, ningún corazón',
   bestia: 'Nadie le da de comer desde 1923',
   serpiente: 'Se dobla. Te dobla.',
+  reflejo: 'Es igual que tú. Pero con talento.',
+  fortuna: 'Ya ha visto cómo acaba esto.',
+  maestro: 'Damas y caballeros...',
 };

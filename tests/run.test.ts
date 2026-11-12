@@ -6,7 +6,9 @@ import { ACTO1_ROOMS, DOOR_CELLS, ROOM_COLS, ROOM_ROWS, flipRows } from '../src/
 import { ITEMS } from '../src/data/items';
 import { ITEM_ICONS as ICONS1 } from '../src/art/sprites/items';
 import { ACT2_SPRITES } from '../src/art/sprites/act2';
-const ITEM_ICONS = { ...ICONS1, ...ACT2_SPRITES };
+import { ACT3_SPRITES } from '../src/art/sprites/act3';
+import { ACT4_SPRITES } from '../src/art/sprites/act4';
+const ITEM_ICONS = { ...ICONS1, ...ACT2_SPRITES, ...ACT3_SPRITES, ...ACT4_SPRITES };
 
 const WALKABLE = new Set(['.', 'T', ...Object.keys(TEMPLATE_ENEMY)]);
 const KNOWN = new Set(['.', 'T', 'C', 'X', 'P', 'M', 'O', 'F', 'J', 'H', ...Object.keys(TEMPLATE_ENEMY)]);
@@ -94,7 +96,8 @@ describe('objetos', () => {
       expect(ITEM_ICONS[`obj_${it.id}`], it.id).toBeTruthy();
       if (it.kind === 'activo') expect(it.active).toBeTruthy();
     }
-    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(38);
+    expect(ITEMS.filter((i) => !i.pools.includes('contrato')).length).toBe(55);
+    expect(ITEMS.filter((i) => i.pools.includes('contrato')).length).toBe(9);
   });
 });
 

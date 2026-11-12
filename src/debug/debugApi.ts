@@ -2,11 +2,16 @@
 import type { GameScene } from '../scenes/GameScene';
 import type { Action } from '../systems/Controls';
 import { ITEMS } from '../data/items';
-import { currentRoom, roomKey, doorVisible, advanceAct } from '../core/run';
-import { EnemyKind } from '../data/enemies';
-import { spawnCreature } from '../entities/creatures';
+import { GOLOSINA_EFFECTS } from '../data/golosinas';
+import { currentRoom, roomKey, doorVisible, advanceAct, bossRoom } from '../core/run';
+import { findTemplate } from '../data/acts';
+import { summary } from '../core/telemetry';
+import { fight as botFight, loot as botLoot, plan as botPlan, walkTo as botWalk, shop as botShop } from './bot';
+import type { Enemy } from '../entities/Enemy';
+import type { EnemyKind, BossKind } from '../data/enemies';
 import type { PickupKind } from '../core/run';
 import type { RoomType } from '../core/floorgen';
+import { audio } from '../audio/sfx';
 
 let clock = 0;
 
@@ -33,6 +38,7 @@ export function installDebug(sc: GameScene): void {
         disparos: { jugador: sc.g.pShots.countActive(), enemigos: sc.g.eShots.countActive() },
         jefe: sc.run.boss,
         contrato: sc.run.contractOpen,
+        audio: audio()?.state ?? 'sin audio',
       };
     },
     mapa() {
@@ -44,6 +50,7 @@ export function installDebug(sc: GameScene): void {
           const r = sc.run.rooms.get(roomKey(x, y));
           const ch: Partial<Record<RoomType, string>> = {
             inicio: 'I', normal: '#', jefe: 'J', camerino: 'C', puesto: 'P', diana: 'D', barraca: 'B', secreta: 'S',
+            pitonisa: 'F', reto: 'R',
           };
           const cur = sc.run.cur.x === x && sc.run.cur.y === y;
           s += r ? (cur ? '@' : ch[r.type]) : '.';
@@ -132,11 +139,146 @@ export function installDebug(sc: GameScene): void {
       sc.scene.restart();
       return `Acto ${sc.run.act}`;
     },
+    /** Prueba una plantilla: entra en una sala normal con esa plantilla y esos volteos. */
+    sala(id: string, flips: { flipX?: boolean; flipY?: boolean } = {}) {
+      const tpl = findTemplate(id, sc.run.act);
+      if (!tpl) return `No existe la plantilla ${id}`;
+      const room = [...sc.run.rooms.values()].find((r) => r.type === 'normal');
+      if (!room) return 'No hay salas normales';
+      Object.assign(room, {
+        templateId: id, flipX: !!flips.flipX, flipY: !!flips.flipY, cleared: tpl.diff === 0,
+        destroyed: [], damaged: {}, pickups: [], pedestals: [], data: {}, visited: true, wave: 0,
+      });
+      const from = (['S', 'W', 'E', 'N'] as const).find((d) => doorVisible(sc.run, room, d)) ?? null;
+      sc.enterRoom(room, from);
+      return api.estado().sala;
+    },
+    /** Lucha contra un jefe concreto (aunque no sea de este acto). */
+    jefe(kind: BossKind) {
+      sc.run.boss = kind;
+      const room = bossRoom(sc.run);
+      room.cleared = false;
+      room.data = {};
+      return api.ir('jefe');
+    },
+    /** Lleva al jefe actual al principio de la fase n (1, 2, 3...). */
+    fase(n: number) {
+      const b = sc.bossIds[0] as Enemy & { phases?: { at: number }[] };
+      if (!b?.phases) return 'Este jefe no tiene fases';
+      const at = b.phases[n - 1]?.at;
+      if (at === undefined) return `No hay fase ${n}`;
+      b.hp = Math.max(1, at * b.maxHp - 0.01);
+      return `${b.name}: ${Math.round(b.hp)} / ${b.maxHp}`;
+    },
+    /** Prueba de carga: n disparos enemigos a la vez. */
+    estres(n = 300) {
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        sc.spawnShot(120, 72, Math.cos(a) * 40, Math.sin(a) * 40, false, { damage: 0, range: 120 });
+      }
+      return sc.g.eShots.countActive();
+    },
+    /**
+     * El bot juega el acto actual sin modo dios: todas las salas normales y el
+     * camerino, luego el jefe; recoge objetos y globos y pisa la trampilla.
+     */
+    botActo(maxSecsSala = 120) {
+      sc.god = false;
+      const av = (n: number) => api.avanzar(n);
+      const rooms: { sala: string; seg: number; perdidos: number; limpia: boolean }[] = [];
+      const hp = () => sc.run.player.hp + sc.run.player.shield;
+      const order = botPlan([...sc.run.rooms.values()]);
+      for (const room of order) {
+        if (sc.player.dead) break;
+        api.ir({ x: room.x, y: room.y });
+        av(30);
+        const before = hp();
+        const r = botFight(sc, av, maxSecsSala);
+        if (!sc.player.dead) botLoot(sc, av);
+        rooms.push({ sala: room.templateId ?? room.type, seg: Math.round(r.secs), perdidos: Math.max(0, before - hp()), limpia: r.cleared });
+      }
+      // La sala secreta: un petardo junto a la pared agrietada.
+      const secret = [...sc.run.rooms.values()].find((r) => r.type === 'secreta');
+      if (!sc.player.dead && secret && sc.run.player.bombs > 0) {
+        for (const dir of ['N', 'S', 'E', 'W'] as const) {
+          // Vecina de la secreta en el lado contrario a `dir`.
+          const v = { N: [0, 1], S: [0, -1], E: [-1, 0], W: [1, 0] }[dir];
+          const nb = sc.run.rooms.get(`${secret.x + v[0]},${secret.y + v[1]}`);
+          if (!nb || nb.type === 'jefe' || !nb.cleared) continue;
+          // `nb` está al lado opuesto de `dir`: su puerta hacia la secreta es `dir`.
+          const toSecret = dir;
+          api.ir({ x: nb.x, y: nb.y });
+          av(20);
+          const pos = { N: [120, 30], S: [120, 114], W: [30, 72], E: [210, 72] }[toSecret];
+          botWalk(sc, av, pos[0], pos[1], 180);
+          api.hacer({ petardo: true }, 2);
+          botWalk(sc, av, 120, 72, 120);
+          av(120);
+          if (secret.secretFound.length || nb.secretFound.includes(toSecret)) {
+            api.ir({ x: secret.x, y: secret.y });
+            av(30);
+            botLoot(sc, av);
+          }
+          break;
+        }
+      }
+      // Golosinas: comer las que ya se sabe que son buenas (o probar si sobra vida).
+      const gol = sc.run.player.golosina;
+      if (gol) {
+        const eff = sc.run.golosinaMap[gol];
+        const known = sc.run.golosinaKnown.includes(eff);
+        if ((known && GOLOSINA_EFFECTS[eff].good) || (!known && sc.run.player.hp >= 4)) api.hacer({ golosina: true }, 2);
+      }
+      // El puesto, si tiene llave (la gasta en la puerta) y boletos para algo.
+      const puesto = [...sc.run.rooms.values()].find((r) => r.type === 'puesto');
+      if (!sc.player.dead && puesto && (puesto.unlocked || sc.run.player.keys > 0) && sc.run.player.tickets >= 3) {
+        if (!puesto.unlocked) {
+          sc.run.player.keys--;
+          puesto.unlocked = true;
+        }
+        api.ir('puesto');
+        av(30);
+        botShop(sc, av);
+      }
+      let jefe = null as null | { jefe: string; seg: number; perdidos: number; vencido: boolean };
+      if (!sc.player.dead) {
+        api.ir('jefe');
+        av(10);
+        const before = hp();
+        const r = botFight(sc, av, 300);
+        jefe = { jefe: sc.run.boss, seg: Math.round(r.secs), perdidos: Math.max(0, before - hp()), vencido: r.cleared };
+        if (!sc.player.dead && r.cleared) {
+          av(90);
+          botLoot(sc, av);
+          if (sc.trapdoor) {
+            botWalk(sc, av, sc.trapdoor.x + 30, sc.trapdoor.y, 120);
+            botWalk(sc, av, sc.trapdoor.x, sc.trapdoor.y, 120);
+          } else {
+            // Acto IV: esperar al final y salir por la puerta de arriba.
+            av(120);
+            if (sc.finale) {
+              // Rodeando el pedestal del centro, hasta la puerta de arriba.
+              botWalk(sc, av, 88, 100, 160);
+              botWalk(sc, av, 88, 30, 200);
+              botWalk(sc, av, 120, 24, 120);
+              botWalk(sc, av, 120, 8, 120);
+            }
+          }
+        }
+      }
+      const p = sc.run.player;
+      return {
+        acto: sc.run.act, muerto: sc.player.dead, causa: sc.lastHurtCause, salas: rooms, jefe,
+        globos: `${p.hp}/${p.maxHp}+${p.shield}`, objetos: [...p.passives, ...(p.active ? [p.active] : [])], segundos: Math.round(sc.run.playTime),
+      };
+    },
+    /** Resumen de la telemetría local (salas dañinas, lentas y causas de muerte). */
+    telemetria: () => summary(),
     matarTodo() {
       for (const e of sc.enemiesAlive()) e.damage(9999, null, 0);
     },
     crear(kind: EnemyKind, x = 120, y = 50) {
-      spawnCreature(sc, kind, x, y);
+      return sc.spawn(kind, x, y).name;
     },
     escena: sc,
   };

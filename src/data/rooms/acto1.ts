@@ -5,14 +5,9 @@
 //   M  bloque de metal  T  tachuelas     O  foso     F  brasero
 //   m mimo  v polilla  o mono  k lanzacuchillos  j caja sorpresa
 //   u monociclista  f tragafuegos  g pulga
-export interface RoomTemplate {
-  id: string;
-  diff: number; // 0 descanso … 3 difícil
-  rows: string[];
-}
-
-export const ROOM_COLS = 13;
-export const ROOM_ROWS = 7;
+import type { RoomTemplate } from './template';
+export type { RoomTemplate } from './template';
+export { ROOM_COLS, ROOM_ROWS, flipRows, DOOR_CELLS } from './template';
 
 export const ACTO1_ROOMS: RoomTemplate[] = [
   {
@@ -304,19 +299,3 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
     ],
   },
 ];
-
-/** Aplica volteos a una plantilla. */
-export function flipRows(rows: string[], flipX: boolean, flipY: boolean): string[] {
-  let out = rows.slice();
-  if (flipY) out = out.reverse();
-  if (flipX) out = out.map((r) => r.split('').reverse().join(''));
-  return out;
-}
-
-/** Celdas interiores justo delante de cada puerta: siempre libres. */
-export const DOOR_CELLS = {
-  N: { c: 6, r: 0 },
-  S: { c: 6, r: 6 },
-  W: { c: 0, r: 3 },
-  E: { c: 12, r: 3 },
-} as const;

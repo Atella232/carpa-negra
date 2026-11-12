@@ -11,7 +11,10 @@ export type RoomType =
   | 'diana'
   | 'barraca'
   | 'secreta'
-  | 'contrato';
+  | 'contrato'
+  // Actos III y IV
+  | 'pitonisa'
+  | 'reto';
 
 export type Dir = 'N' | 'S' | 'E' | 'W';
 export const DIRS: Dir[] = ['N', 'S', 'E', 'W'];

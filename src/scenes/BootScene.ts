@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { bakeLights } from '../systems/Oscuridad';
 import { bakeEverything } from '../art';
 import { overrideList } from '../art/bake';
 import { loadSave } from '../core/save';
@@ -20,6 +21,7 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     bakeEverything(this);
+    bakeLights(this);
     const mk = (key: string, frames: number, rate: number) =>
       this.anims.create({
         key,
@@ -28,6 +30,8 @@ export class BootScene extends Phaser.Scene {
       });
     mk('salpicadura', 4, 20);
     mk('salpicadura_roja', 4, 20);
+    mk('salpicadura_azul', 4, 20);
+    mk('humo', 4, 14);
     mk('explosion', 6, 18);
     mk('onda', 4, 16);
     mk('crema', 3, 5);

@@ -4,8 +4,11 @@ import type { GameScene } from '../scenes/GameScene';
 import type { Player } from '../entities/Player';
 import { item, ActiveEffect, ItemFlags } from '../data/items';
 import { GOLOSINA_EFFECTS, GolosinaEffect } from '../data/golosinas';
+import { actDef } from '../data/acts';
 import { Paloma } from '../entities/familiars';
 import { DEPTH } from '../config';
+import { buildVolley } from '../core/volley';
+import { setBonuses } from '../data/sets';
 import { PickupKind } from '../core/run';
 
 export class ItemEffects {
@@ -15,8 +18,31 @@ export class ItemEffects {
 
   constructor(private sc: GameScene) {}
 
-  hasFlag(flag: keyof ItemFlags): boolean {
-    return this.sc.run.player.passives.some((id) => item(id).flags?.[flag]);
+  /** Banderas de los objetos que lleva (se recalculan al cambiar de objetos). */
+  private flags = new Set<keyof ItemFlags>();
+
+  refreshFlags(): void {
+    this.flags.clear();
+    for (const id of this.sc.run.player.passives) {
+      const f = item(id).flags;
+      if (f) for (const k of Object.keys(f) as (keyof ItemFlags)[]) if (f[k]) this.flags.add(k);
+    }
+    for (const b of setBonuses(this.sc.run.player.passives)) if (b.flag) this.flags.add(b.flag as keyof ItemFlags);
+  }
+
+  hasFlag(flag: keyof ItemFlags | 'rugido' | 'palomas' | 'payasoCompleto'): boolean {
+    return this.flags.has(flag as keyof ItemFlags);
+  }
+
+  /** Bonificaciones que dependen del momento (máscaras, pluma de sangre). */
+  dynamicStats(): { damage: number; damageMult: number } {
+    const p = this.sc.run.player;
+    let damage = 0,
+      damageMult = 1;
+    if (this.hasFlag('comedia') && p.hp >= p.maxHp) damageMult *= 1.3;
+    if (this.hasFlag('tragedia')) damage += 0.6 * Math.floor((p.maxHp - p.hp) / 2);
+    if (this.hasFlag('plumaSangre')) damage += 0.1 * (p.cleanRooms ?? 0);
+    return { damage, damageMult };
   }
 
   // --- Objeto activo ---
@@ -43,10 +69,16 @@ export class ItemEffects {
         sc.snd('tarta');
         let t = 0;
         const step = (_: number, delta: number) => {
-          t += delta / 1000;
-          pie.x += d.x * 190 * (delta / 1000);
-          pie.y += d.y * 190 * (delta / 1000);
-          pie.rotation += delta / 100;
+          // Si se cambió de sala o de escena, la tarta ya no existe.
+          if (!pie.active) {
+            sc.events.off('update', step);
+            return;
+          }
+          const dt = Math.min(0.05, delta / 1000);
+          t += dt;
+          pie.x += d.x * 190 * dt;
+          pie.y += d.y * 190 * dt;
+          pie.rotation += dt * 10;
           const hit = sc.nearestEnemy(pie.x, pie.y, 12);
           const out = pie.x < 18 || pie.x > 222 || pie.y < 18 || pie.y > 126;
           if (hit || out || t > 0.6) {
@@ -56,6 +88,8 @@ export class ItemEffects {
           }
         };
         sc.events.on('update', step);
+        sc.roomObjs.push(pie);
+        sc.events.once('shutdown', () => sc.events.off('update', step));
         break;
       }
       case 'sombrero': {
@@ -76,8 +110,9 @@ export class ItemEffects {
       case 'latigo': {
         sc.snd('latigo');
         sc.shake(120, 0.008);
-        for (const e of sc.enemiesAlive()) {
-          e.fearT = 3.5;
+        for (const e of sc.targets()) {
+          // A los jefes, el miedo les dura la mitad.
+          e.fearT = e.isBoss ? 1.75 : 3.5;
           e.damage(10, pl.sprite, 120);
         }
         break;
@@ -117,12 +152,48 @@ export class ItemEffects {
         sc.roomUpdate.push(follow);
         break;
       }
+      case 'loco': {
+        // Vuelve a barajar los objetos de los pedestales de la sala.
+        let n = 0;
+        for (const ped of sc.pedestals) {
+          if (!ped.item || ped.contractCost > 0) continue;
+          const pool = sc.room.type === 'puesto' ? 'puesto' : sc.room.type === 'jefe' ? 'jefe' : sc.room.type === 'secreta' ? 'secreta' : 'camerino';
+          const id = sc.drawItem(pool);
+          ped.setItem(id);
+          if (ped.price > 0) ped.price = sc.itemPrice(id);
+          sc.splash(ped.x, ped.y - 8, 'humo');
+          n++;
+        }
+        sc.snd(n ? 'carta' : 'error');
+        if (n) sc.banner('¡El Loco!', 'Los objetos cambian de sitio');
+        break;
+      }
+      case 'confeti': {
+        // Cono de confeti hacia donde apuntas: empuja, aturde y borra balas.
+        const d = pl.lastShotDir;
+        sc.snd('canon');
+        sc.shake(120, 0.006);
+        for (let i = 0; i < 4; i++) sc.confetti(pl.x + d.x * (10 + i * 14), pl.y - 6 + d.y * (10 + i * 14), 10);
+        const inCone = (x: number, y: number) => {
+          const ex = x - pl.x,
+            ey = y - pl.y;
+          const along = ex * d.x + ey * d.y;
+          return along > -4 && along < 80 && Math.abs(ex * d.y - ey * d.x) < 12 + along * 0.6;
+        };
+        for (const s of sc.enemyShotsNear(pl.x, pl.y, 90)) if (inCone(s.x, s.y)) s.pop();
+        for (const e of sc.targets()) {
+          if (!inCone(e.x, e.y)) continue;
+          e.stunT = Math.max(e.stunT, 1);
+          e.damage(6, pl.sprite, e.isBoss ? 0 : 280);
+        }
+        break;
+      }
       case 'bocina': {
         sc.snd('bocina');
         const ring = sc.add.sprite(pl.x, pl.y, 'onda', 0).setDepth(DEPTH.fx).setScale(1.3);
         ring.play('onda').once('animationcomplete', () => ring.destroy());
         for (const s of sc.enemyShotsNear(pl.x, pl.y, 80)) s.pop();
-        for (const e of sc.enemiesAlive()) {
+        for (const e of sc.targets()) {
           const d = Phaser.Math.Distance.Between(pl.x, pl.y, e.x, e.y);
           if (d < 90) {
             e.stunT = 1.4;
@@ -140,7 +211,7 @@ export class ItemEffects {
     sc.snd('tarta');
     const s = sc.add.sprite(x, y, 'crema', 0).setDepth(DEPTH.fx);
     s.play('crema').once('animationcomplete', () => s.destroy());
-    for (const e of sc.enemiesAlive()) {
+    for (const e of sc.targets()) {
       if (Phaser.Math.Distance.Between(x, y, e.x, e.y) < 30) {
         e.damage(22, { x, y }, 90);
         e.stunT = 2.5;
@@ -150,7 +221,7 @@ export class ItemEffects {
   }
 
   onDashTick(pl: Player): void {
-    for (const e of this.sc.enemiesAlive()) {
+    for (const e of this.sc.targets()) {
       if (this.dashHit.has(e)) continue;
       if (Phaser.Math.Distance.Between(pl.x, pl.y, e.x, e.y) < 16) {
         this.dashHit.add(e);
@@ -161,19 +232,41 @@ export class ItemEffects {
 
   // --- Ganchos ---
   onHurt(): void {
+    const sc = this.sc;
+    const pl = sc.player;
     if (this.hasFlag('burstOnHurt')) {
-      const pl = this.sc.player;
+      // Estalla con tus modificadores (fuego, veneno, rebotes...).
+      const base = buildVolley(sc.stats, { x: 1, y: 0 }, 1)[0].opts;
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
-        this.sc.spawnShot(pl.x, pl.y - 6, Math.cos(a) * 160, Math.sin(a) * 160, true, {
-          damage: this.sc.stats.damage, range: 100,
-        });
+        sc.spawnShot(pl.x, pl.y - 6, Math.cos(a) * 160, Math.sin(a) * 160, true, { ...base, range: 100, split: false });
       }
+    }
+    if (this.hasFlag('humo')) {
+      // Bomba de Humo: 2 s invisible; las criaturas pierden el rastro.
+      sc.splash(pl.x, pl.y, 'humo', 2);
+      sc.snd('humo');
+      pl.hiddenT = 2;
+      for (const e of sc.targets()) if (!e.isBoss) e.fearT = Math.max(e.fearT, 0.6);
+    }
+  }
+
+  /** Cada muerte cuenta para el Ramo de Rosas. */
+  onKill(): void {
+    if (!this.hasFlag('ramo')) return;
+    const p = this.sc.run.player;
+    p.ramo = (p.ramo ?? 0) + 1;
+    if (p.ramo >= 12 && p.hp < p.maxHp) {
+      p.ramo = 0;
+      p.hp = Math.min(p.maxHp, p.hp + 1);
+      this.sc.floatText('+ medio globo', 0xd4323f);
+      this.sc.snd('globo');
     }
   }
 
   onRoomClear(): void {
     const p = this.sc.run.player;
+    if (!this.sc.roomHurt) p.cleanRooms = (p.cleanRooms ?? 0) + 1;
     if (!p.active) return;
     const max = item(p.active).active!.charges;
     if (p.charge < max) p.charge++;
@@ -206,8 +299,14 @@ export class ItemEffects {
     for (const t of this.trail) {
       t.life -= dt;
       t.img.setAlpha(Math.min(1, t.life));
-      for (const e of sc.enemiesAlive()) {
+      for (const e of sc.targets()) {
         if (!e.flying && Math.abs(e.x - t.x) < 8 && Math.abs(e.body.bottom - t.y) < 8) e.slowT = 0.5;
+      }
+      // El serrín también frena las balas que lo cruzan.
+      for (const s of sc.enemyShotsNear(t.x, t.y, 7)) {
+        if (s.getData('serrin')) continue;
+        s.setData('serrin', true);
+        s.body.velocity.scale(0.6);
       }
     }
     this.trail = this.trail.filter((t) => {
@@ -229,6 +328,7 @@ export class ItemEffects {
     const effect = sc.run.golosinaMap[p.golosina];
     p.golosina = null;
     if (!sc.run.golosinaKnown.includes(effect)) sc.run.golosinaKnown.push(effect);
+    sc.meta('golosina', effect);
     sc.snd('golosina');
     const before = sc.stats;
     const note = this.apply(effect);
@@ -255,7 +355,11 @@ export class ItemEffects {
         // Nunca mata: si solo queda medio globo, te libras.
         if (p.hp + p.shield > 1) {
           if (p.shield > 0) p.shield--;
-          else p.hp--;
+          else {
+            p.hp--;
+            // Cuenta como daño rojo (El Contrato no se libra de esto).
+            p.redDamageTaken = true;
+          }
           sc.player.flash(0x79b84a);
           sc.snd('herido');
           note = '- medio globo';
@@ -295,30 +399,64 @@ export class ItemEffects {
   }
 }
 
-/** Aplausómetro: matar sin recibir daño llena el medidor. */
+/**
+ * Aplausómetro: matar sin recibir daño llena el medidor y el público lanza
+ * regalos. En el Acto IV tiene dos caras: si te golpean, abuchea y lanza tomates.
+ */
 export class Applause {
-  value = 0;
   readonly max = 14;
-  private combo = 0;
+  /** Umbral de abucheo (Acto IV). */
+  readonly booAt = -6;
 
   constructor(private sc: GameScene) {}
 
+  private get st() {
+    return this.sc.run.publico;
+  }
+
+  get value(): number {
+    return this.st.value;
+  }
+
+  private get twoFaced(): boolean {
+    return actDef(this.sc.run.act).mods?.publico === 'dos_caras';
+  }
+
+  private get gain(): number {
+    return this.sc.effects.hasFlag('claque') ? 2 : 1;
+  }
+
   onKill(): void {
-    this.value += this.combo > 0 ? 2 : 1;
-    this.combo = 1.6;
-    if (this.value >= this.max) {
-      this.value = 0;
+    const st = this.st;
+    if (st.value < 0) st.value = Math.min(0, st.value + 2);
+    else st.value += (st.combo > 0 ? 2 : 1) * this.gain;
+    st.combo = 1.6;
+    if (st.value >= this.max) {
+      st.value = 0;
       this.sc.applauseReward();
     }
   }
 
-  onHurt(): void {
-    if (this.value > 2) this.sc.snd('abucheo');
-    this.value = 0;
-    this.combo = 0;
+  /** `fromPublic`: el daño de un tomate no vuelve a mover el medidor. */
+  onHurt(fromPublic = false): void {
+    const st = this.st;
+    if (fromPublic) return;
+    if (st.value > 2) this.sc.snd('abucheo');
+    st.combo = 0;
+    if (!this.twoFaced) {
+      st.value = this.sc.effects.hasFlag('aplausoEterno') ? Math.floor(st.value / 2) : 0;
+      return;
+    }
+    st.value = this.sc.effects.hasFlag('aplausoEterno') ? Math.floor(st.value / 2) : Math.min(0, st.value) - 3;
+    if (st.value <= this.booAt) {
+      st.value = 0;
+      this.sc.snd('abucheo');
+      this.sc.banner('¡Buuu!', 'El público te tira tomates');
+      this.sc.publicThrow(this.sc.player.x, this.sc.player.y, 3);
+    }
   }
 
   update(dt: number): void {
-    this.combo = Math.max(0, this.combo - dt);
+    this.st.combo = Math.max(0, this.st.combo - dt);
   }
 }

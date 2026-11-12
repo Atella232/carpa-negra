@@ -67,6 +67,15 @@ const G: Record<string, string> = {
   '↑': '..#..|.###.|#.#.#|..#..|..#..|..#..|.....',
   '↓': '.....|..#..|..#..|..#..|#.#.#|.###.|..#..',
   '♥': '.....|.#.#.|#####|#####|.###.|..#..|.....',
+  '→': '.....|..#..|...#.|#####|...#.|..#..|.....',
+  '←': '.....|..#..|.#...|#####|.#...|..#..|.....',
+  // Vocales acentuadas: la tilde ocupa la primera fila.
+  Á: '...#.|.###.|#...#|#...#|#####|#...#|#...#',
+  É: '...#.|#####|#....|####.|#....|#....|#####',
+  Í: '...#.|.###.|..#..|..#..|..#..|..#..|.###.',
+  Ó: '...#.|.###.|#...#|#...#|#...#|#...#|.###.',
+  Ú: '...#.|#...#|#...#|#...#|#...#|#...#|.###.',
+  Ü: '.#.#.|.....|#...#|#...#|#...#|#...#|.###.',
 };
 
 export const FONT_KEY = 'fuente';
@@ -104,13 +113,13 @@ export function bakeFont(scene: Phaser.Scene): void {
   scene.cache.bitmapFont.add(FONT_KEY, data);
 }
 
-const ACCENTS: Record<string, string> = { Á: 'A', É: 'E', Í: 'I', Ó: 'O', Ú: 'U', Ü: 'U', À: 'A', È: 'E' };
+const ACCENTS: Record<string, string> = { À: 'A', È: 'E', Ì: 'I', Ò: 'O', Ù: 'U' };
 
 /** Pasa el texto al juego de caracteres de la fuente. */
 export function fontText(s: string): string {
   return s
     .toUpperCase()
-    .replace(/[ÁÉÍÓÚÜÀÈ]/g, (c) => ACCENTS[c])
+    .replace(/[ÀÈÌÒÙ]/g, (c) => ACCENTS[c])
     .replace(/[—–]/g, '-')
     .split('')
     .map((c) => (c === '\n' || G[c] ? c : '?'))

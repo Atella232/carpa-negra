@@ -1,0 +1,14 @@
+{
+  "name": "Carpa Negra",
+  "short_name": "Carpa Negra",
+  "description": "Roguelike de mazmorras en un circo de los horrores.",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0b0710",
+  "theme_color": "#0b0710",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icono-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

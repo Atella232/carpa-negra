@@ -2,13 +2,12 @@
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { Enemy } from './Enemy';
-import { Champion, ENEMIES, EnemyKind } from '../data/enemies';
-import { Leon, Cobra, Oso, Loro, Domador, Payasito } from './creatures2';
+import type { EnemyOpts } from './Enemy';
 
-const anim = (t: number, fps: number, frames: number) => Math.floor(t * fps) % frames;
+import { anim } from './Enemy';
 
 /** Mimo roto: persigue sin descanso, rodeando obstáculos. */
-class Mimo extends Enemy {
+export class Mimo extends Enemy {
   t = Math.random();
   protected think(dt: number): void {
     this.t += dt;
@@ -18,7 +17,7 @@ class Mimo extends Enemy {
 }
 
 /** Polilla del foco: revolotea hacia el jugador de forma errática. */
-class Polilla extends Enemy {
+export class Polilla extends Enemy {
   t = Math.random() * 10;
   jitter = new Phaser.Math.Vector2();
   protected think(dt: number): void {
@@ -33,7 +32,7 @@ class Polilla extends Enemy {
 }
 
 /** Mono platillero: cuando te alinea, embiste en línea recta hasta chocar. */
-class Mono extends Enemy {
+export class Mono extends Enemy {
   state: 'idle' | 'windup' | 'charge' | 'dazed' = 'idle';
   timer = 0;
   dir = new Phaser.Math.Vector2();
@@ -56,8 +55,11 @@ class Mono extends Enemy {
         if (aligned && this.sc.nav.lineFree(this.x, this.y, p.x, p.y)) {
           this.dir.set(aligned === 'h' ? Math.sign(dx) : 0, aligned === 'v' ? Math.sign(dy) : 0);
           this.state = 'windup';
-          this.timer = 0.35;
-          this.sc.snd('golpe');
+          this.timer = 0.4;
+          // Aviso: la línea por la que va a cargar.
+          this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * 230, this.y + this.dir.y * 230, 0.4, { owner: this, w: 10 });
+          this.windupFlash();
+          this.sc.snd('aviso');
         }
         break;
       }
@@ -96,7 +98,7 @@ class Mono extends Enemy {
 }
 
 /** Lanzacuchillos: pasea y lanza cuchillos apuntando al jugador. */
-class Lanzacuchillos extends Enemy {
+export class Lanzacuchillos extends Enemy {
   timer = Phaser.Math.FloatBetween(1, 2.2);
   wanderT = 0;
   wander = new Phaser.Math.Vector2();
@@ -137,12 +139,11 @@ class Lanzacuchillos extends Enemy {
 }
 
 /** Caja sorpresa: invulnerable cerrada; al abrirse dispara en anillo. */
-class Caja extends Enemy {
+export class Caja extends Enemy {
   state: 'closed' | 'opening' | 'open' = 'closed';
   timer = Phaser.Math.FloatBetween(1.2, 2.4);
-  constructor(scene: GameScene, x: number, y: number, champion: Champion | null) {
-    const d = ENEMIES.caja;
-    super(scene, x, y, d.texture, { hp: d.hp, speed: 0, body: d.body, champion, name: d.name });
+  constructor(scene: GameScene, x: number, y: number, texture: string, o: EnemyOpts) {
+    super(scene, x, y, texture, { ...o, speed: 0 });
     this.invulnerable = true;
     this.body.setImmovable(true);
   }
@@ -180,7 +181,7 @@ class Caja extends Enemy {
 }
 
 /** Monociclista: rueda en diagonal y rebota en todo. */
-class Monociclista extends Enemy {
+export class Monociclista extends Enemy {
   dir = new Phaser.Math.Vector2(Math.random() < 0.5 ? 1 : -1, Math.random() < 0.5 ? 1 : -1).normalize();
   t = 0;
   protected think(dt: number): void {
@@ -198,7 +199,7 @@ class Monociclista extends Enemy {
 }
 
 /** Tragafuegos: se acerca despacio y escupe un reguero de fuego. */
-class Tragafuegos extends Enemy {
+export class Tragafuegos extends Enemy {
   timer = Phaser.Math.FloatBetween(1.5, 3);
   windup = 0;
   t = 0;
@@ -235,7 +236,7 @@ class Tragafuegos extends Enemy {
 }
 
 /** Pulga amaestrada: salta sobre el jugador. Mientras vuela no toca el suelo. */
-class Pulga extends Enemy {
+export class Pulga extends Enemy {
   state: 'ground' | 'air' = 'ground';
   timer = Phaser.Math.FloatBetween(0.5, 1.2);
   from = new Phaser.Math.Vector2();
@@ -277,46 +278,5 @@ class Pulga extends Enemy {
         this.sc.splash(this.x, this.y + 4, 'salpicadura', 0.7);
       }
     }
-  }
-}
-
-export function spawnCreature(
-  scene: GameScene,
-  kind: EnemyKind,
-  x: number,
-  y: number,
-  champion: Champion | null = null,
-): Enemy {
-  const d = ENEMIES[kind];
-  const o = { hp: d.hp, speed: d.speed, flying: d.flying, body: d.body, champion, name: d.name };
-  switch (kind) {
-    case 'mimo':
-      return new Mimo(scene, x, y, d.texture, o);
-    case 'polilla':
-      return new Polilla(scene, x, y, d.texture, o);
-    case 'mono':
-      return new Mono(scene, x, y, d.texture, o);
-    case 'lanzacuchillos':
-      return new Lanzacuchillos(scene, x, y, d.texture, o);
-    case 'caja':
-      return new Caja(scene, x, y, champion);
-    case 'monociclista':
-      return new Monociclista(scene, x, y, d.texture, o);
-    case 'tragafuegos':
-      return new Tragafuegos(scene, x, y, d.texture, o);
-    case 'pulga':
-      return new Pulga(scene, x, y, d.texture, o);
-    case 'leon':
-      return new Leon(scene, x, y, d.texture, o);
-    case 'cobra':
-      return new Cobra(scene, x, y, d.texture, o);
-    case 'oso':
-      return new Oso(scene, x, y, d.texture, o);
-    case 'loro':
-      return new Loro(scene, x, y, d.texture, o);
-    case 'domador':
-      return new Domador(scene, x, y, d.texture, o);
-    case 'payasito':
-      return new Payasito(scene, x, y, d.texture, o);
   }
 }

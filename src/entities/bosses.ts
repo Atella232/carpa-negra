@@ -8,14 +8,13 @@ export class Forzudo extends Enemy {
   state: 'walk' | 'windupPesa' | 'windupCharge' | 'charge' | 'dazed' | 'jump' | 'fall' = 'walk';
   timer = 1.5;
   dir = new Phaser.Math.Vector2();
-  jumpFrom = new Phaser.Math.Vector2();
   jumpTo = new Phaser.Math.Vector2();
   jumpT = 0;
   lastAttack = '';
 
   constructor(scene: GameScene, x: number, y: number) {
     super(scene, x, y, 'forzudo', {
-      hp: 260, speed: 30, body: { w: 26, h: 20, dy: 8 }, name: 'El Forzudo',
+      hp: 260, speed: 30, body: { w: 26, h: 20, dy: 8 }, name: 'El Forzudo', fixedHp: true,
     });
     this.isBoss = true;
     this.wake = 1.4;
@@ -48,8 +47,6 @@ export class Forzudo extends Enemy {
         this.setFrame(2);
         this.x += Math.sin(this.timer * 70) * 0.6;
         if (this.timer <= 0) {
-          const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
-          this.dir.set(Math.cos(a), Math.sin(a));
           this.state = 'charge';
           this.timer = 1.6;
         }
@@ -67,6 +64,8 @@ export class Forzudo extends Enemy {
           // Del techo de la carpa caen trastos.
           for (let i = 0; i < (this.enraged ? 6 : 3); i++) {
             const x = Phaser.Math.Between(30, 210);
+            // Aviso: la columna por la que caerá.
+            this.sc.telegraph.line(x, 20, x, 132, (200 + i * 120) / 1000 + 0.25, { w: 7 });
             this.sc.time.delayedCall(200 + i * 120, () => {
               if (!this.active) return;
               this.sc.spawnShot(x, 20, 0, 110, false, { damage: 1, range: 120, texture: 'bala_grande' });
@@ -90,7 +89,8 @@ export class Forzudo extends Enemy {
         this.contact = 0;
         this.flying = true;
         // Sigue al jugador mientras está en el aire.
-        this.jumpTo.lerp(new Phaser.Math.Vector2(this.player.x, this.player.y - 6), 0.04);
+        // 0.04 por fotograma a 60 Hz, igual a cualquier tasa de refresco.
+        this.jumpTo.lerp(new Phaser.Math.Vector2(this.player.x, this.player.y - 6), 1 - Math.pow(0.96, dt * 60));
         this.desired.set((this.jumpTo.x - this.x) * 3, (this.jumpTo.y - this.y) * 3);
         if (k >= 1) {
           this.state = 'fall';
@@ -119,10 +119,14 @@ export class Forzudo extends Enemy {
     } else if (a === 'charge') {
       this.state = 'windupCharge';
       this.timer = 0.65;
+      // Apunta al empezar y lo avisa con una línea en el suelo.
+      const ang = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+      this.dir.set(Math.cos(ang), Math.sin(ang));
+      this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * 220, this.y + this.dir.y * 220, 0.65, { owner: this, w: 22 });
+      this.windupFlash();
     } else {
       this.state = 'jump';
       this.jumpT = 0;
-      this.jumpFrom.set(this.x, this.y);
       this.jumpTo.set(this.player.x, this.player.y);
       this.sc.snd('salto');
     }
@@ -176,7 +180,7 @@ export class Siames extends Enemy {
   constructor(scene: GameScene, x: number, y: number, role: 'tiro' | 'tiron') {
     super(scene, x, y, role === 'tiro' ? 'siames_a' : 'siames_b', {
       hp: 120, speed: role === 'tiro' ? 48 : 40, body: { w: 14, h: 14, dy: 6 },
-      name: role === 'tiro' ? 'Tiro' : 'Tirón',
+      name: role === 'tiro' ? 'Tiro' : 'Tirón', fixedHp: true,
     });
     this.role = role;
     this.isBoss = true;
@@ -215,15 +219,20 @@ export class Siames extends Enemy {
           this.chase(this.speed * rage);
           if (this.timer <= 0) {
             this.state = 'windup';
-            this.timer = 0.5;
+            this.timer = 0.55;
+            // Apunta al empezar y lo avisa en el suelo: la embestida va por esa línea.
+            const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
+            this.dir.set(Math.cos(a), Math.sin(a));
+            const len = 160 * (this.enraged ? 1.5 : 1) * 0.7;
+            this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * len, this.y + this.dir.y * len, 0.55, { owner: this, w: 12 });
+            this.windupFlash();
+            this.sc.snd('aviso');
           }
           break;
         case 'windup': {
           this.setFrame(1);
           this.x += Math.sin(this.timer * 80) * 0.5;
           if (this.timer <= 0) {
-            const a = Math.atan2(this.player.y - this.y, this.player.x - this.x);
-            this.dir.set(Math.cos(a), Math.sin(a));
             this.state = 'charge';
             this.timer = 0.7;
           }

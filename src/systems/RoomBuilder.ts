@@ -5,17 +5,19 @@ import { DEPTH, DOOR_POS, ROOM_H, ROOM_W, TILE, tileX, tileY, COLS } from '../co
 import { RoomState, neighborRoom, doorVisible, contractDoorDir, PickupKind, roomKey } from '../core/run';
 import { Dir, DIRS } from '../core/floorgen';
 import { hashString } from '../core/rng';
-import { flipRows } from '../data/rooms/acto1';
-import { actDef } from '../data/acts';
-import { Bestia, SerpienteCabeza } from '../entities/bosses2';
+import { flipRows } from '../data/rooms/template';
+import { TILES } from '../data/tiles';
+import { safeSpawns } from '../core/safeEntry';
+import { buildTile } from './tiles';
+import { spawnBoss } from '../entities/bossRegistry';
+import { actDef, findTemplate } from '../data/acts';
 import { BOSS_NAMES, BOSS_TAGLINES } from '../data/enemies';
-import { TEMPLATE_ENEMY, Champion } from '../data/enemies';
+import { Champion, EnemyKind } from '../data/enemies';
 import { bakeRoomBackground, FloorStyle, DoorStyle } from '../art/sprites/room';
-import { Obstacle, ObstacleKind } from '../entities/props';
-import { spawnCreature } from '../entities/creatures';
-import { Forzudo, spawnSiameses, Siames } from '../entities/bosses';
 import { txt } from '../ui/text';
 import { item } from '../data/items';
+import { RULETA } from '../data/loot';
+import { Controls } from './Controls';
 
 export interface DoorInfo {
   dir: Dir;
@@ -23,15 +25,6 @@ export interface DoorInfo {
   locked: boolean;
   target?: RoomState;
 }
-
-const OBSTACLE_CHARS: Record<string, ObstacleKind> = {
-  C: 'cajon',
-  X: 'cajon_marcado',
-  M: 'bloque',
-  P: 'palomitas',
-  F: 'brasero',
-  H: 'paja',
-};
 
 const BASE_PRICE: Partial<Record<PickupKind, number>> = {
   globo: 3,
@@ -44,12 +37,19 @@ const BASE_PRICE: Partial<Record<PickupKind, number>> = {
 
 export function buildRoom(sc: GameScene, room: RoomState): Phaser.GameObjects.Image {
   const act = sc.run.act;
-  let style = (room.type === 'normal' ? 'normal' : room.type) as FloorStyle;
-  if (act === 2 && (room.type === 'normal' || room.type === 'inicio')) style = 'jaulas';
-  if (act === 2 && room.type === 'jefe') style = 'guarida';
-  const key = `fondo_${act}_${roomKey(room.x, room.y)}`;
-  if (!sc.textures.exists(key)) bakeRoomBackground(sc, key, style, hashString(`${sc.run.seed}:${key}`));
+  const style = (actDef(act).floor[room.type] ?? room.type) as FloorStyle;
+  // La textura lleva la semilla en la clave (las texturas son de todo el juego y
+  // sobreviven entre partidas); el dibujo usa el mismo hash de siempre.
+  const legacy = `fondo_${act}_${roomKey(room.x, room.y)}`;
+  const key = `fondo_${sc.run.seed}_${act}_${roomKey(room.x, room.y)}`;
+  if (!sc.textures.exists(key)) bakeRoomBackground(sc, key, style, hashString(`${sc.run.seed}:${legacy}`));
   const bg = sc.add.image(ROOM_W / 2, ROOM_H / 2, key).setDepth(DEPTH.floor);
+  // Las manchas de lo que pasó aquí siguen en el suelo.
+  for (const d of room.decals) {
+    const m = sc.add.image(d.x, d.y, 'mancha', d.f).setDepth(DEPTH.decal).setScale(d.s);
+    if (d.t !== undefined) m.setTint(d.t);
+    sc.roomObjs.push(m);
+  }
 
   if (room.type === 'normal' && room.templateId) buildTemplate(sc, room);
   buildSpecial(sc, room);
@@ -76,6 +76,7 @@ export function rebuildDoors(sc: GameScene): void {
   const room = sc.room;
   sc.g.walls.clear(true, true);
   sc.g.doors.clear(true, true);
+  sc.g.gaps.clear(true, true);
   for (const o of sc.doorObjs) o.destroy();
   sc.doorObjs = [];
   sc.doors = [];
@@ -115,7 +116,8 @@ export function rebuildDoors(sc: GameScene): void {
     const isContract = room.type === 'jefe' && sc.run.contractOpen && dir === contractDoorDir(sc.run);
     const target = isContract ? sc.run.contract : neighborRoom(sc.run, room, dir);
     const style = doorStyle(room, target, isContract);
-    const locked = !!target && target.type === 'puesto' && !target.unlocked && room.type !== 'puesto';
+    // El puesto y el número de riesgo se abren con llave.
+    const locked = !!target && (target.type === 'puesto' || target.type === 'reto') && !target.unlocked && room.type !== target.type;
     const isSecret = style === 'secreta';
     const open = (room.cleared || isSecret) && !locked;
     const info: DoorInfo = { dir, open, locked, target };
@@ -129,8 +131,13 @@ export function rebuildDoors(sc: GameScene): void {
       const lock = sc.add.image(pos.x, pos.y + (dir === 'N' ? 2 : dir === 'S' ? -2 : 0), 'candado').setDepth(DEPTH.decal + 3);
       sc.doorObjs.push(lock);
     }
-    if (!open) {
-      const horiz = dir === 'N' || dir === 'S';
+    const horiz = dir === 'N' || dir === 'S';
+    if (open) {
+      // Las criaturas y los recogibles no se escapan por la puerta abierta.
+      const gz = sc.add.zone(pos.x, pos.y, horiz ? gap : TILE, horiz ? TILE : gap);
+      sc.physics.add.existing(gz, true);
+      sc.g.gaps.add(gz);
+    } else {
       const z = sc.add.zone(pos.x, pos.y, horiz ? gap : TILE, horiz ? TILE : gap);
       sc.physics.add.existing(z, true);
       z.setData('door', info);
@@ -144,56 +151,77 @@ function doorStyle(room: RoomState, target: RoomState | undefined, contract: boo
   if (!target) return 'normal';
   if (target.type === 'secreta' || room.type === 'secreta') return 'secreta';
   if (room.type === 'jefe' || target.type === 'jefe') return 'jefe';
-  const special: RoomState['type'][] = ['camerino', 'puesto', 'diana', 'barraca'];
+  const special: RoomState['type'][] = ['camerino', 'puesto', 'diana', 'barraca', 'pitonisa', 'reto'];
   if (special.includes(target.type)) return target.type as DoorStyle;
   if (special.includes(room.type)) return room.type as DoorStyle;
   return 'normal';
 }
 
 function rollChampion(sc: GameScene): Champion | null {
-  const chance = actDef(sc.run.act).champion + sc.stats.luck * 0.005;
+  // La Gira 1+: más campeones; Gira 5: salas malditas (aún más).
+  const gira = sc.run.gira;
+  const chance = actDef(sc.run.act).champion + sc.stats.luck * 0.005 + (gira >= 1 ? 0.06 : 0) + (gira >= 5 ? 0.08 : 0);
   if (!sc.rngCombat.chance(chance)) return null;
   return sc.rngCombat.pick<Champion>(['rojo', 'amarillo', 'azul', 'dorado']);
 }
 
 function buildTemplate(sc: GameScene, room: RoomState): void {
-  const tpl = actDef(sc.run.act).templates.find((t) => t.id === room.templateId)!;
+  const def = actDef(sc.run.act);
+  const tpl = findTemplate(room.templateId!, sc.run.act)!;
   const rows = flipRows(tpl.rows, room.flipX, room.flipY);
+  // Al volver a una sala de "números" a medias, sale la oleada en curso.
+  const wave = room.wave ?? 0;
   for (let r = 0; r < rows.length; r++) {
     for (let c = 0; c < rows[r].length; c++) {
       const ch = rows[r][c];
-      const idx = c + r * COLS;
-      const x = tileX(c),
-        y = tileY(r);
-      const ob = OBSTACLE_CHARS[ch];
-      if (ob) {
-        if (room.destroyed.includes(idx)) continue;
-        const hits = room.damaged[idx] ?? 0;
-        const o = new Obstacle(sc, x, y, ob, idx, hits);
-        if (ob === 'brasero' && hits >= 4) {
-          o.extinguished = true;
-          o.setTexture('brasero_apagado');
-        }
-        sc.nav.setBlocked(c, r, true);
-      } else if (ch === 'T') {
-        sc.roomObjs.push(sc.add.image(x, y, 'tachuelas').setDepth(DEPTH.hazard));
-        sc.spikes.push({ x, y });
-      } else if (ch === 'J') {
-        // Jaula: no se puede pasar, pero los disparos cruzan los barrotes.
-        const cage = sc.physics.add.staticImage(x, y, 'jaula').setDepth(DEPTH.world + y - 6);
-        cage.setSize(16, 16).refreshBody();
-        sc.g.pits.add(cage);
-        sc.nav.setBlocked(c, r, true);
-      } else if (ch === 'O') {
-        const pit = sc.physics.add.staticImage(x, y, 'foso').setDepth(DEPTH.hazard);
-        pit.setSize(14, 14).refreshBody();
-        sc.g.pits.add(pit);
-        sc.nav.setBlocked(c, r, true);
-      } else if (TEMPLATE_ENEMY[ch] && !room.cleared) {
-        spawnCreature(sc, TEMPLATE_ENEMY[ch], x, y, rollChampion(sc));
-      }
+      const tile = TILES[ch];
+      if (tile) buildTile(tile.kind, { sc, room, c, r, idx: c + r * COLS, x: tileX(c), y: tileY(r), ch });
     }
   }
+  // Criaturas, apartadas de la puerta por la que entras (entrada segura).
+  if (!room.cleared && wave === 0) {
+    for (const sp of safeSpawns(rows, (ch) => !!def.legend[ch], sc.entryDir)) {
+      sc.spawn(def.legend[sp.ch], tileX(sp.c), tileY(sp.r), rollChampion(sc));
+    }
+  }
+  if (room.cleared) return;
+  if (tpl.dark) sc.setDark(true);
+  if (tpl.waves?.length) startWaves(sc, room, tpl.waves, wave);
+}
+
+/** Salas de "números": oleadas con puntos de aparición avisados y puertas cerradas. */
+function startWaves(sc: GameScene, room: RoomState, waves: string[][], resume: number): void {
+  const def = actDef(sc.run.act);
+  if (resume > 0) spawnWave(sc, room, waves[resume - 1], 0);
+  let pending = false;
+  sc.clearBlockers.push(() => (room.wave ?? 0) < waves.length || pending);
+  sc.roomUpdate.push(() => {
+    const done = room.wave ?? 0;
+    if (pending || done >= waves.length || sc.clearPending().length > 0 || sc.roomTimeSec < 0.6) return;
+    pending = true;
+    room.wave = done + 1;
+    sc.banner(`Número ${done + 2} de ${waves.length + 1}`, '¡Siguiente número!');
+    sc.snd('redoble');
+    spawnWave(sc, room, waves[done], 0.7, () => (pending = false));
+  });
+  void def;
+}
+
+function spawnWave(sc: GameScene, room: RoomState, layer: string[], delay: number, onSpawn?: () => void): void {
+  const def = actDef(sc.run.act);
+  const rows = flipRows(layer, room.flipX, room.flipY);
+  const spots: { x: number; y: number; kind: EnemyKind }[] = [];
+  rows.forEach((row, r) => [...row].forEach((ch, c) => def.legend[ch] && spots.push({ x: tileX(c), y: tileY(r), kind: def.legend[ch] })));
+  for (const sp of spots) if (delay > 0) sc.telegraph.marker(sp.x, sp.y, delay, { color: 0xf2c14e });
+  const go = () => {
+    for (const sp of spots) {
+      const e = sc.spawn(sp.kind, sp.x, sp.y, rollChampion(sc));
+      e.wake = 0.25;
+    }
+    onSpawn?.();
+  };
+  if (delay > 0) sc.time.delayedCall(delay * 1000, go);
+  else go();
 }
 
 function buildSpecial(sc: GameScene, room: RoomState): void {
@@ -201,13 +229,28 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
   room.stocked = true;
   const cx = ROOM_W / 2;
   switch (room.type) {
-    case 'inicio':
-      sc.floorText(cx, 44, 'WASD andar · Flechas lanzar');
-      sc.floorText(cx, 104, 'E petardo · Espacio objeto');
-      sc.floorText(cx, 114, 'Q golosina · Esc pausa');
+    case 'inicio': {
+      // Instrucciones con las teclas (o botones) que use el jugador.
+      if (sc.run.act > 1) break;
+      const c = Controls.get();
+      const g = (a: Parameters<typeof c.glyph>[0]) => c.glyph(a);
+      if (c.lastDevice === 'tactil') {
+        sc.floorText(cx, 44, 'Palanca izquierda: andar · derecha: lanzar');
+        sc.floorText(cx, 104, 'PET petardo · OBJ objeto · GOL golosina');
+      } else if (c.lastDevice === 'mando') {
+        sc.floorText(cx, 44, 'Stick izquierdo: andar · Y A X B: lanzar');
+        sc.floorText(cx, 104, `${g('petardo')} petardo · ${g('activo')} objeto · ${g('golosina')} golosina`);
+        sc.floorText(cx, 114, `${g('estadisticas')} mapa · ${g('pausa')} pausa`);
+      } else {
+        sc.floorText(cx, 44, `${g('arriba')}${g('izquierda')}${g('abajo')}${g('derecha')} andar · Flechas lanzar`);
+        sc.floorText(cx, 98, `${g('petardo')} petardo · ${g('activo')} objeto`);
+        sc.floorText(cx, 108, `${g('golosina')} golosina · ${g('estadisticas')} mapa`);
+        sc.floorText(cx, 118, `${g('pausa')} pausa`);
+      }
       break;
+    }
     case 'camerino':
-      if (first) sc.addPedestal(cx, tileY(3), sc.drawItem('camerino'));
+      if (first) sc.addPedestal(cx, tileY(3), sc.preItem(room, 0, 'camerino'));
       sc.floorText(cx, 22, 'Camerino', 0xf2c14e, 0.6);
       break;
     case 'puesto': {
@@ -219,19 +262,21 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       }
       sc.roomObjs.push(awning);
       if (first) {
-        for (const x of [tileX(4), tileX(8)]) {
-          const id = sc.drawItem('puesto');
+        [tileX(4), tileX(8)].forEach((x, i) => {
+          const id = sc.preItem(room, i, 'puesto')!;
           sc.addPedestal(x, tileY(2) + 4, id, { price: sc.itemPrice(id) });
-        }
+        });
         const kinds: PickupKind[] = sc.rngLoot.shuffle<PickupKind>(['globo', 'petardo', 'llave', 'golosina', 'globo_plata']).slice(0, 3);
         kinds.forEach((k, i) => sc.spawnPickup(k, tileX(3 + i * 3), tileY(4) + 4, { price: sc.price(BASE_PRICE[k]!) }));
       }
+      buildRestock(sc, room);
       break;
     }
     case 'secreta':
       sc.floorText(cx, 22, 'Entre bastidores', 0xc9b3ef, 0.5);
       if (first) {
-        if (sc.rngItems.chance(0.6)) sc.addPedestal(cx, tileY(3), sc.drawItem('secreta'));
+        const hasItem = room.data.secretItem !== undefined ? !!room.data.secretItem : sc.rngItems.chance(0.6);
+        if (hasItem) sc.addPedestal(cx, tileY(3), sc.preItem(room, 0, 'secreta'));
         else {
           for (let i = 0; i < 6; i++) sc.spawnPickup('boleto', cx + sc.rngLoot.int(-24, 24), tileY(3) + sc.rngLoot.int(-12, 12));
           sc.spawnPickup('taco_boletos', cx, tileY(3));
@@ -242,20 +287,25 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
     case 'diana':
       buildDiana(sc, room);
       break;
+    case 'pitonisa':
+      buildPitonisa(sc, room);
+      break;
+    case 'reto':
+      sc.floorText(cx, 22, 'Número de riesgo', 0xe8743b, 0.7);
+      if (first) sc.addPedestal(cx, tileY(3), sc.preItem(room, 0, 'camerino'));
+      if (!room.data.started) sc.floorText(cx, tileY(5) + 4, 'Si lo coges, empieza el número', 0xefe6d8, 0.5);
+      break;
     case 'barraca':
       buildBarraca(sc, room);
       break;
     case 'jefe':
       if (!room.cleared) {
         const boss = sc.run.boss;
-        if (boss === 'forzudo') sc.bossIds = [new Forzudo(sc, cx, 54)];
-        else if (boss === 'siameses') {
-          sc.bossIds = spawnSiameses(sc, cx, 54);
-          addRope(sc, sc.bossIds as Siames[]);
-        } else if (boss === 'bestia') sc.bossIds = [new Bestia(sc, cx, 54)];
-        else sc.bossIds = [new SerpienteCabeza(sc, cx, 40)];
+        sc.bossIds = spawnBoss(sc, boss, cx);
         sc.banner(BOSS_NAMES[boss], BOSS_TAGLINES[boss]);
-      } else if (!room.data.trapdoorGone) {
+      } else if (room.data.finalOpen) {
+        sc.addFinale();
+      } else {
         sc.addTrapdoor();
       }
       break;
@@ -265,8 +315,10 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
       sc.tweens.add({ targets: m, y: m.y - 2, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
       sc.floorText(cx, tileY(5) + 2, 'Firma aquí. Letra pequeña.', 0xd4323f, 0.8);
       if (first) {
-        for (const x of [tileX(4), tileX(8)]) {
-          const id = sc.drawItem('contrato');
+        for (const [i, x] of [tileX(4), tileX(8)].entries()) {
+          // Si la reserva se ha agotado no hay pedestal (antes salía un calcetín gratis).
+          const id = sc.preItem(room, i, 'contrato');
+          if (!id) break;
           sc.addPedestal(x, tileY(3), id, { contractCost: item(id).contractCost ?? 0 });
         }
       }
@@ -275,34 +327,98 @@ function buildSpecial(sc: GameScene, room: RoomState): void {
   }
 }
 
-function addRope(sc: GameScene, twins: Siames[]): void {
-  const gfx = sc.add.graphics().setDepth(DEPTH.world - 1);
-  sc.roomObjs.push(gfx);
-  sc.roomUpdate.push(() => {
-    gfx.clear();
-    const [a, b] = twins;
-    if (!a.active || !b.active || a.dead || b.dead) return;
-    const x0 = a.x, y0 = a.y + 2, x1 = b.x, y1 = b.y + 2;
-    // Cuerda con algo de comba.
-    const sag = Math.max(0, 30 - Phaser.Math.Distance.Between(x0, y0, x1, y1) * 0.3);
-    const curve = new Phaser.Curves.QuadraticBezier(
-      new Phaser.Math.Vector2(x0, y0),
-      new Phaser.Math.Vector2((x0 + x1) / 2, (y0 + y1) / 2 + sag),
-      new Phaser.Math.Vector2(x1, y1),
-    );
-    gfx.lineStyle(2, 0xa8673b, 1);
-    curve.draw(gfx, 16);
-    gfx.lineStyle(1, 0x6b3e26, 1);
-    curve.draw(gfx, 16);
-    // La cuerda hace daño (está llena de clavos).
-    const pts = curve.getPoints(12);
-    const p = sc.player;
-    for (const pt of pts) {
-      if (Math.abs(pt.x - p.x) < 5 && Math.abs(pt.y - p.y) < 5) {
-        sc.hurtPlayer(1, pt.x, pt.y);
-        break;
-      }
+/** Campanilla del puesto: por 5 boletos, el tendero repone lo que falte (una vez). */
+function buildRestock(sc: GameScene, room: RoomState): void {
+  const x = tileX(11),
+    y = tileY(5);
+  const bell = sc.add.image(x, y, 'estrella').setDepth(DEPTH.decal).setScale(1.5).setAlpha(room.data.restocked ? 0.2 : 0.8);
+  sc.roomObjs.push(bell);
+  sc.floorText(x, y + 8, room.data.restocked ? '-' : 'Reponer 5', 0x79b84a, 0.7);
+  let cd = 0.6;
+  sc.roomUpdate.push((dt) => {
+    cd -= dt;
+    if (cd > 0 || room.data.restocked) return;
+    if (Phaser.Math.Distance.Between(sc.player.x, sc.player.y, x, y) > 9) return;
+    cd = 1;
+    const st = sc.run.player;
+    const price = sc.price(5);
+    if (st.tickets < price) {
+      sc.banner('Faltan boletos', `Reponer cuesta ${price}`);
+      sc.snd('error');
+      return;
     }
+    st.tickets -= price;
+    room.data.restocked = true;
+    bell.setAlpha(0.2);
+    sc.snd('compra');
+    const kinds = sc.rngLoot.shuffle<PickupKind>(['globo', 'petardo', 'llave', 'golosina', 'globo_plata']).slice(0, 3);
+    kinds.forEach((k, i) => sc.spawnPickup(k, tileX(3 + i * 3), tileY(4) + 4, { price: sc.price(BASE_PRICE[k]!) }));
+    sc.banner('¡Género nuevo!', 'El tendero repone el puesto');
+  });
+}
+
+/** Gabinete de la Pitonisa: por 5 boletos, una lectura (mapa, golosinas o jefe). */
+function buildPitonisa(sc: GameScene, room: RoomState): void {
+  const cx = ROOM_W / 2;
+  sc.floorText(cx, 22, 'Gabinete de la Pitonisa', 0xc9b3ef, 0.7);
+  // Si venciste a Madame Fortuna, el gabinete está cerrado por defunción.
+  if (sc.run.beaten.includes('fortuna')) {
+    sc.floorText(cx, tileY(2), 'Cerrado por defunción', 0x8a8394, 0.8);
+    if (!room.data.gift) {
+      room.data.gift = true;
+      sc.spawnPickup('golosina', cx, tileY(3));
+    }
+    return;
+  }
+  const npc = sc.add.sprite(cx, tileY(1), 'fortuna', 0).setDepth(DEPTH.world + tileY(1));
+  sc.roomObjs.push(npc);
+  sc.tweens.add({ targets: npc, y: npc.y - 2, yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.easeInOut' });
+  const readings: { key: string; label: string; x: number; run: () => void }[] = [
+    {
+      key: 'mapa', label: 'Mapa', x: tileX(3),
+      run: () => {
+        sc.run.mapRevealed = true;
+        sc.banner('La carpa entera', 'Tu mapa ya no tiene secretos');
+      },
+    },
+    {
+      key: 'golosinas', label: 'Golosinas', x: tileX(6),
+      run: () => {
+        for (const e of Object.values(sc.run.golosinaMap)) if (!sc.run.golosinaKnown.includes(e)) sc.run.golosinaKnown.push(e);
+        sc.banner('Las golosinas', 'Ya sabes qué hace cada color');
+      },
+    },
+    {
+      key: 'jefe', label: 'Jefe', x: tileX(9),
+      run: () => sc.banner(`Te espera ${BOSS_NAMES[sc.run.boss]}`, BOSS_TAGLINES[sc.run.boss]),
+    },
+  ];
+  for (const r of readings) {
+    const used = !!room.data[`lectura_${r.key}`];
+    const star = sc.add.image(r.x, tileY(4), 'estrella').setDepth(DEPTH.decal).setScale(2).setAlpha(used ? 0.2 : 0.7);
+    sc.roomObjs.push(star);
+    sc.floorText(r.x, tileY(5) + 2, used ? '-' : `${r.label} 5`, 0xc9b3ef, 0.7);
+  }
+  let cd = 0.6;
+  sc.roomUpdate.push((dt) => {
+    cd -= dt;
+    if (cd > 0) return;
+    const p = sc.player;
+    const r = readings.find((q) => Phaser.Math.Distance.Between(p.x, p.y, q.x, tileY(4)) < 9);
+    if (!r || room.data[`lectura_${r.key}`]) return;
+    cd = 1;
+    const st = sc.run.player;
+    if (st.tickets < 5) {
+      sc.banner('Faltan boletos', 'La pitonisa cobra 5');
+      sc.snd('error');
+      return;
+    }
+    st.tickets -= 5;
+    room.data[`lectura_${r.key}`] = true;
+    npc.setFrame(2);
+    sc.snd('carta');
+    sc.time.delayedCall(400, () => npc.setFrame(0));
+    r.run();
   });
 }
 
@@ -314,6 +430,8 @@ function buildDiana(sc: GameScene, room: RoomState): void {
   const mark = sc.add.image(cx, tileY(2) + 6, 'estrella').setDepth(DEPTH.decal).setScale(2).setAlpha(0.7);
   sc.roomObjs.push(board, npc, mark);
   sc.floorText(cx, 106, 'Ponte en la estrella', 0xf2a3b5, 0.6);
+  // Aviso: perder globos rojos aquí cierra El Contrato (los de plata no).
+  if (actDef(sc.run.act).contract) sc.floorText(cx, 116, 'Los globos rojos cuentan para El Maestro', 0x8a8394, 0.5);
   let cd = 0.8;
   let busy = false;
   sc.roomUpdate.push((dt) => {
@@ -410,16 +528,7 @@ function buildBarraca(sc: GameScene, room: RoomState): void {
     sc.time.delayedCall(1500, () => {
       spinning = false;
       cd = 0.9;
-      const out = sc.rngLoot.weighted<string>([
-        { value: 'nada', weight: 30 },
-        { value: 'boletos', weight: 15 },
-        { value: 'globo', weight: 14 },
-        { value: 'petardo', weight: 12 },
-        { value: 'llave', weight: 12 },
-        { value: 'golosina', weight: 10 },
-        { value: 'cofre', weight: 5 },
-        { value: 'gordo', weight: 3 },
-      ]);
+      const out = sc.rngLoot.weighted<string>(RULETA);
       const at = { x: cx, y: tileY(3) };
       switch (out) {
         case 'nada':
@@ -429,6 +538,7 @@ function buildBarraca(sc: GameScene, room: RoomState): void {
           sc.spawnPickup('taco_boletos', at.x, at.y, { burst: true });
           break;
         case 'gordo':
+          sc.meta('gordo');
           room.data.broken = true;
           wheel.setTint(0x555055);
           label.setText('ROTA');

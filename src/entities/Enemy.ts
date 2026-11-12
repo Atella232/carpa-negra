@@ -1,8 +1,13 @@
 // Clase base de criaturas: vida, estados alterados, retroceso y muerte.
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
-import { DEPTH } from '../config';
+import { DEPTH, ROOM_H, ROOM_W, TILE, toCol, toRow } from '../config';
 import { Champion, CHAMPIONS } from '../data/enemies';
+import type { ShotOpts } from './Shot';
+import { settings } from '../core/save';
+
+/** Fotograma de una animación en bucle. */
+export const anim = (t: number, fps: number, frames: number) => Math.floor(t * fps) % frames;
 
 export interface EnemyOpts {
   hp: number;
@@ -14,6 +19,8 @@ export interface EnemyOpts {
   name?: string;
   /** Los jefes tienen su vida ya ajustada a su acto. */
   fixedHp?: boolean;
+  /** Sin humo al aparecer (partes de jefes, cuerpos). */
+  noSmoke?: boolean;
 }
 
 export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -29,11 +36,15 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   invulnerable = false;
   isBoss = false;
   countsForClear = true;
+  /** Se le puede apuntar (por defecto, si cuenta para limpiar la sala). */
+  targetable?: boolean;
   dead = false;
   /** Cuánto tarda en reaccionar al entrar en la sala. */
   wake = 0.7;
   /** Altura visual (saltos). */
   lift = 0;
+  /** Para detectar el aterrizaje de un salto (volar → suelo). */
+  private wasFlying = false;
 
   desired = new Phaser.Math.Vector2();
   knock = new Phaser.Math.Vector2();
@@ -48,7 +59,12 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
   fearT = 0;
   stunT = 0;
   flashT = 0;
+  /** Temporizadores propios (mueren con la criatura y se congelan con ella). */
+  private timers: { t: number; fn: () => void }[] = [];
+  /** Multiplicador de velocidad temporal (aura del acomodador). */
+  hasteT = 0;
   protected shadow: Phaser.GameObjects.Image;
+  private badge: Phaser.GameObjects.Image | null = null;
   protected bodyDy: number;
   protected baseOff = { x: 0, y: 0 };
 
@@ -67,14 +83,22 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.body.setSize(o.body.w, o.body.h, false);
     this.baseOff = { x: (this.width - o.body.w) / 2, y: (this.height - o.body.h) / 2 + o.body.dy };
     this.body.setOffset(this.baseOff.x, this.baseOff.y);
-    if (ch) this.setTint(ch.tint);
+    if (ch) {
+      this.setTint(ch.tint);
+      // Insignia con forma (no solo color) para distinguir campeones.
+      this.badge = scene.add.image(x, y, 'insignias', ['rojo', 'amarillo', 'azul', 'dorado'].indexOf(this.champion!)).setDepth(DEPTH.overlay - 2);
+    }
     this.shadow = scene.add
       .image(x, y, this.width > 30 ? 'sombra_grande' : 'sombra')
       .setDepth(DEPTH.shadow);
     // Aparición: un instante translúcido.
+    // Aparición: humo y un instante translúcido (con el reloj del juego).
     this.setAlpha(0);
-    scene.tweens.add({ targets: this, alpha: 1, duration: 250 });
+    this.appearT = 0.25;
+    if (!o.noSmoke) scene.splash(x, y, 'humo');
   }
+
+  private appearT = 0;
 
   get sc(): GameScene {
     return this.scene as GameScene;
@@ -86,11 +110,49 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   /** Comportamiento propio de cada criatura: fija `desired` y ataca. */
   protected abstract think(dt: number): void;
+  /** Se ejecuta siempre, aunque esté aturdida o dormida. */
+  protected tick?(dt: number): void;
+  /** Al recibir un disparo del payaso: 'deflect' lo devuelve. */
+  onShot?(s: { x: number; y: number; body: { velocity: { x: number; y: number } } }): 'hit' | 'deflect';
+  /** Iluminada por el Foco de Teatro: recibe más daño. */
+  litT = 0;
+
+  /** Llama a `fn` dentro de `sec` segundos de juego (si sigue viva). */
+  protected after(sec: number, fn: () => void): void {
+    this.timers.push({ t: sec, fn });
+  }
+
+  /** Anillo de `n` balas. */
+  protected ring(n: number, speed: number, o: Partial<ShotOpts> = {}, offset = 0, at: { x: number; y: number } = this): void {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + offset;
+      this.sc.spawnShot(at.x, at.y, Math.cos(a) * speed, Math.sin(a) * speed, false, { damage: 1, range: 150, ...o });
+    }
+  }
+
+  /** Abanico de `n` balas separadas `spread` radianes, hacia `base` (por defecto, el payaso). */
+  protected fan(n: number, spread: number, speed: number, o: Partial<ShotOpts> = {}, base?: number, at: { x: number; y: number } = this): void {
+    const b = base ?? Math.atan2(this.player.y - 6 - at.y, this.player.x - at.x);
+    for (let i = 0; i < n; i++) {
+      const a = b + (i - (n - 1) / 2) * spread;
+      this.sc.spawnShot(at.x, at.y, Math.cos(a) * speed, Math.sin(a) * speed, false, { damage: 1, range: 200, ...o });
+    }
+  }
+
+  /** Destello de preparación: todo ataque avisa antes. */
+  protected windupFlash(): void {
+    this.setTintFill(0xfff2a8);
+    this.flashT = 0.08;
+  }
 
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
     if (this.dead || !this.body) return;
     const dt = Math.min(0.05, delta / 1000);
+    if (this.appearT > 0) {
+      this.appearT = Math.max(0, this.appearT - dt);
+      this.setAlpha(1 - this.appearT / 0.25);
+    }
     this.wake -= dt;
     this.slowT = Math.max(0, this.slowT - dt);
     this.fearT = Math.max(0, this.fearT - dt);
@@ -119,17 +181,50 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
       }
     }
 
+    if (this.timers.length) {
+      const due = this.timers.filter((t) => (t.t -= dt) <= 0);
+      this.timers = this.timers.filter((t) => t.t > 0);
+      for (const t of due) {
+        if (this.dead || !this.active) return;
+        const sc = this.sc;
+        sc.shotCause = this.name;
+        t.fn();
+        sc.shotCause = '';
+      }
+    }
+    this.hasteT = Math.max(0, this.hasteT - dt);
+    this.litT = Math.max(0, this.litT - dt);
+    this.tick?.(dt);
+    if (this.dead || !this.body) return;
+
     this.desired.set(0, 0);
     if (this.stunT <= 0 && this.wake <= 0 && !this.player.dead) {
       if (this.fearT > 0) this.flee();
-      else this.think(dt);
+      else {
+        // La criatura puede desaparecer en su turno (señuelos): la escena se guarda antes.
+        const sc = this.sc;
+        sc.shotCause = this.name;
+        this.think(dt);
+        sc.shotCause = '';
+      }
     }
-    const slow = this.slowT > 0 ? 0.45 : 1;
-    this.body.setVelocity(this.desired.x * slow + this.knock.x, this.desired.y * slow + this.knock.y);
+    // Puede haber muerto (o desaparecido) durante su propio turno.
+    if (this.dead || !this.active || !this.body) return;
+    // Al aterrizar de un salto, nunca dentro de un obstáculo o un foso.
+    if (this.wasFlying && !this.flying) this.landSafe();
+    this.wasFlying = this.flying;
+    this.keepInside();
+    const slow = (this.slowT > 0 ? 0.45 : 1) * (this.hasteT > 0 ? 1.35 : 1);
+    const floor = this.flying ? null : this.sc.floorPush(this.x, this.y + this.bodyDy);
+    this.body.setVelocity(
+      this.desired.x * slow + this.knock.x + (floor?.x ?? 0),
+      this.desired.y * slow + this.knock.y + (floor?.y ?? 0),
+    );
     this.knock.scale(Math.pow(0.0005, dt));
     if (this.knock.lengthSq() < 1) this.knock.set(0, 0);
 
     this.setDepth(DEPTH.world + this.y + this.bodyDy);
+    this.badge?.setPosition(this.x, this.y - this.height / 2 - 4 - this.lift).setVisible(this.visible && this.alpha > 0.5);
     this.shadow.setPosition(this.x, this.body.bottom - 1);
     this.shadow.setVisible(this.visible);
     // La altura (saltos, vuelo) solo mueve el dibujo, no el cuerpo físico.
@@ -139,6 +234,26 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (this.flashT > 0) {
       this.flashT -= dt;
       if (this.flashT <= 0) this.restoreTint();
+    }
+  }
+
+  /** Si ha caído sobre una baldosa bloqueada, pasa a la libre más cercana. */
+  protected landSafe(): void {
+    const sc = this.sc;
+    if (!sc.nav.isBlocked(toCol(this.x), toRow(this.y + this.bodyDy))) return;
+    const p = sc.nearestFreeTo(this.x, this.y + this.bodyDy);
+    this.setPosition(p.x, p.y - this.bodyDy);
+    this.body.reset(p.x, p.y - this.bodyDy);
+  }
+
+  /** Red de seguridad: nada se sale del interior de la sala. */
+  private keepInside(): void {
+    const x = Phaser.Math.Clamp(this.x, TILE + 2, ROOM_W - TILE - 2);
+    const y = Phaser.Math.Clamp(this.y + this.bodyDy, TILE + 2, ROOM_H - TILE - 2) - this.bodyDy;
+    if (x !== this.x || y !== this.y) {
+      this.setPosition(x, y);
+      this.body.reset(x, y);
+      this.knock.set(0, 0);
     }
   }
 
@@ -156,6 +271,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
     this.hp -= amount;
     if (!silent) this.sc.snd('golpe');
+    if (settings().damageNumbers && amount >= 0.5) this.sc.fx.number(this.x, this.y - this.height / 2, amount);
     this.setTintFill(0xffffff);
     this.flashT = 0.06;
     if (from && knockback > 0 && !this.isBoss) {
@@ -186,10 +302,16 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.dead = true;
     const sc = this.sc;
     if (this.champion === 'azul') {
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        sc.spawnShot(this.x, this.y, Math.cos(a) * 85, Math.sin(a) * 85, false, { damage: 1, range: 120 });
-      }
+      // Estalla al morir, con aviso.
+      const x = this.x,
+        y = this.y;
+      sc.telegraph.circle(x, y, 18, 0.35, { color: 0x4f8fd1 });
+      sc.time.delayedCall(350, () => {
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          sc.spawnShot(x, y, Math.cos(a) * 85, Math.sin(a) * 85, false, { damage: 1, range: 120 });
+        }
+      });
     }
     sc.onEnemyKilled(this);
     this.shadow.destroy();
@@ -198,6 +320,7 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   destroy(fromScene?: boolean): void {
     if (this.shadow?.active) this.shadow.destroy();
+    this.badge?.destroy();
     super.destroy(fromScene);
   }
 

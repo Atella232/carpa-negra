@@ -1,12 +1,13 @@
 // Estado de una partida: piso, salas, inventario y progreso. Sin Phaser.
 import { RngStreams, normalizeSeed } from './rng';
 import { generateFloor, roomDoors, Dir, FloorLayout, RoomType, DIR_VEC } from './floorgen';
-import { ItemPools } from './itempool';
+import { ItemPools, PoolName } from './itempool';
 import { StatMods } from './stats';
 import { ITEMS } from '../data/items';
-import { actDef } from '../data/acts';
+import { actDef, ACTS } from '../data/acts';
 import { BossKind } from '../data/enemies';
 import { GOLOSINA_COLORS, GOLOSINA_EFFECTS, GolosinaColor, GolosinaEffect } from '../data/golosinas';
+import { characterDef } from '../data/characters';
 
 export type PickupKind =
   | 'globo'
@@ -58,6 +59,10 @@ export interface RoomState {
   damaged: Record<number, number>;
   pickups: SavedPickup[];
   pedestals: SavedPedestal[];
+  /** Manchas del suelo que se quedan al volver (muertes, explosiones). */
+  decals: { x: number; y: number; f: number; s: number; t?: number }[];
+  /** Oleadas ya superadas en salas de "números". */
+  wave?: number;
   /** Ya se generó el contenido especial (objeto, tienda...). */
   stocked: boolean;
   data: Record<string, number | boolean | string>;
@@ -76,6 +81,16 @@ export interface PlayerState {
   golosina: GolosinaColor | null;
   bonus: StatMods; // efectos permanentes de golosinas
   redDamageTaken: boolean;
+  /** Salas limpiadas sin recibir daño (Pluma de Sangre). */
+  cleanRooms?: number;
+  /** Muertes acumuladas para el Ramo de Rosas. */
+  ramo?: number;
+  /** La Red de Seguridad ya se usó en este acto. */
+  netUsed?: boolean;
+  /** Personaje elegido. */
+  character?: string;
+  /** Trajes ya completados (para dar su premio una sola vez). */
+  setsDone?: string[];
 }
 
 export interface RunState {
@@ -97,9 +112,31 @@ export interface RunState {
   kills: number;
   roomsCleared: number;
   startedAt: number;
+  /** Segundos de juego (sin contar la pausa). */
+  playTime: number;
   seenItems: string[];
   /** Medios globos curados al empezar el acto actual (para avisar). */
   actHeal: number;
+  /** El público: aplausómetro (negativo = abucheo, en el Acto IV). */
+  publico: { value: number; combo: number };
+  /** Tipo de partida: normal, con semilla escrita o función del día. */
+  mode: 'normal' | 'semilla' | 'diaria';
+  /** Nivel de La Gira (0 = normal). */
+  gira: number;
+  /** Contadores de la partida (para carteles y resumen). */
+  stats: { bombsUsedAct: number; ovaciones: number; contratos: number; espejos: number };
+  /** Objetos bloqueados al empezar la partida (se guardan para repetir semilla). */
+  locked: string[];
+  /** El telón debe abrirse al empezar el acto. */
+  curtainOpen?: boolean;
+  /** Jefes vencidos en esta partida (El Maestro los "presenta" primero). */
+  beaten: BossKind[];
+  /** La Pitonisa ha revelado el mapa de este acto. */
+  mapRevealed?: boolean;
+  /** Puerta por la que se entró en la sala actual (para continuar la partida). */
+  entry?: Dir | null;
+  /** Objetos de las salas especiales de cada acto, sorteados al empezar. */
+  preItems?: Record<number, ActItems>;
 }
 
 export const roomKey = (x: number, y: number) => `${x},${y}`;
@@ -117,6 +154,7 @@ function newRoom(x: number, y: number, type: RoomType, dist: number, doors: Dir[
     damaged: {},
     pickups: [],
     pedestals: [],
+    decals: [],
     stocked: false,
     data: {},
   };
@@ -127,7 +165,10 @@ export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layo
   const def = actDef(act);
   // El Acto I usa el flujo "mapa" sin sal para que las semillas antiguas no cambien.
   const mapRng = act === 1 ? streams.get('mapa') : streams.get('mapa', String(act));
-  const layout = generateFloor(mapRng, { minNormal: def.minNormal, maxNormal: def.maxNormal });
+  const layout = generateFloor(mapRng, {
+    minNormal: def.minNormal, maxNormal: def.maxNormal,
+    required: def.specials.required, optional: def.specials.optional,
+  });
   const templates = def.templates;
 
   const rooms = new Map<string, RoomState>();
@@ -157,7 +198,17 @@ export function buildAct(streams: RngStreams, act: number): Pick<RunState, 'layo
   };
 }
 
-export function createRun(seedInput: string, now = 0): RunState {
+export interface RunOptions {
+  now?: number;
+  character?: string;
+  mode?: RunState['mode'];
+  gira?: number;
+  /** Objetos que el jugador aún no ha desbloqueado (no salen en la partida). */
+  locked?: readonly string[];
+}
+
+export function createRun(seedInput: string, opts: RunOptions | number = {}): RunState {
+  const o: RunOptions = typeof opts === 'number' ? { now: opts } : opts;
   const seed = normalizeSeed(seedInput) || 'CARPA000';
   const streams = new RngStreams(seed);
   const floor = buildAct(streams, 1);
@@ -168,6 +219,13 @@ export function createRun(seedInput: string, now = 0): RunState {
   const golosinaMap = {} as Record<GolosinaColor, GolosinaEffect>;
   GOLOSINA_COLORS.forEach((c, i) => (golosinaMap[c] = effects[i]));
 
+  const ch = characterDef(o.character);
+  const locked = [...(o.locked ?? [])];
+  const pools = new ItemPools(ITEMS.filter((i) => !locked.includes(i.id)));
+  const passives = [...(ch.items ?? [])];
+  for (const id of passives) pools.remove(id);
+  if (ch.active) pools.remove(ch.active);
+
   return {
     seed,
     streams,
@@ -175,30 +233,106 @@ export function createRun(seedInput: string, now = 0): RunState {
     actName: actDef(1).name,
     ...floor,
     player: {
-      maxHp: 6,
-      hp: 6,
-      shield: 0,
-      tickets: 0,
-      bombs: 1,
-      keys: 1,
-      passives: [],
-      active: null,
-      charge: 0,
+      maxHp: ch.base.maxHp,
+      hp: ch.base.maxHp,
+      shield: ch.base.shield,
+      tickets: ch.base.tickets,
+      bombs: ch.base.bombs,
+      keys: ch.base.keys,
+      passives,
+      active: ch.active ?? null,
+      charge: ch.active ? 99 : 0,
       golosina: null,
       bonus: {},
       redDamageTaken: false,
+      character: ch.id,
     },
-    pools: new ItemPools(ITEMS),
+    pools,
     golosinaMap,
     golosinaKnown: [],
     contractOpen: false,
     bossDefeated: false,
     kills: 0,
     roomsCleared: 0,
-    startedAt: now,
+    startedAt: o.now ?? 0,
+    playTime: 0,
     seenItems: [],
     actHeal: 0,
+    publico: { value: 0, combo: 0 },
+    mode: o.mode ?? 'normal',
+    gira: o.gira ?? 0,
+    stats: { bombsUsedAct: 0, ovaciones: 0, contratos: 0, espejos: 0 },
+    locked,
+    beaten: [],
   };
+}
+
+/** Partida nueva con los objetos del primer acto ya sorteados. */
+export function newRun(seedInput: string, opts: RunOptions | number = {}): RunState {
+  const run = createRun(seedInput, opts);
+  prerollAllActs(run);
+  assignPreItems(run);
+  return run;
+}
+
+/** Objetos de las salas especiales de un acto, sorteados al crear la partida. */
+export interface ActItems {
+  camerino: string[];
+  reto: string[];
+  puesto: string[];
+  secreta: string[];
+  secretItem: boolean;
+  jefe: string[];
+  contrato: string[];
+}
+
+/**
+ * Sortea al empezar la partida los objetos de las salas especiales de los
+ * cuatro actos, en orden fijo y con su propio flujo de azar. Así una semilla
+ * da los mismos objetos aunque cada jugador visite las salas en otro orden o
+ * saque otras cosas de cofres y ruletas.
+ */
+export function prerollAllActs(run: RunState): void {
+  const rng = run.streams.get('objetos', 'pre');
+  const take = (pool: PoolName, n: number) => {
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const id = run.pools.draw(pool, rng);
+      if (id) out.push(id);
+    }
+    return out;
+  };
+  run.preItems = {};
+  for (const def of ACTS) {
+    const secretItem = rng.chance(0.6);
+    run.preItems[def.n] = {
+      camerino: take('camerino', 1),
+      reto: take('camerino', 1),
+      puesto: take('puesto', 2),
+      secretItem,
+      secreta: secretItem ? take('secreta', 1) : [],
+      jefe: take('jefe', 1),
+      contrato: def.contract ? take('contrato', 2) : [],
+    };
+  }
+}
+
+/** Reparte los objetos sorteados del acto actual entre sus salas (`room.data.pre0`...). */
+export function assignPreItems(run: RunState): void {
+  const it = run.preItems?.[run.act];
+  if (!it) return;
+  const put = (room: RoomState, ids: string[]) => ids.forEach((id, i) => (room.data[`pre${i}`] = id));
+  for (const room of run.rooms.values()) {
+    if (room.type === 'camerino') put(room, it.camerino);
+    else if (room.type === 'reto') put(room, it.reto);
+    else if (room.type === 'puesto') put(room, it.puesto);
+    else if (room.type === 'jefe') put(room, it.jefe);
+    else if (room.type === 'secreta') {
+      room.data.secretItem = it.secretItem;
+      put(room, it.secreta);
+    }
+  }
+  put(run.contract, it.contrato);
 }
 
 /** Pasa al siguiente acto conservando al jugador, sus objetos y las reservas. */
@@ -208,11 +342,18 @@ export function advanceAct(run: RunState): void {
   Object.assign(run, buildAct(run.streams, run.act));
   run.contractOpen = false;
   run.bossDefeated = false;
-  run.player.redDamageTaken = false;
-  // Entre actos se recupera al menos un globo rojo.
+  // Entre actos se recupera un globo (dos si no perdiste rojos en el acto).
   const p = run.player;
+  const heal = p.redDamageTaken ? 2 : 4;
+  run.player.redDamageTaken = false;
+  run.player.netUsed = false;
+  assignPreItems(run);
+  run.mapRevealed = false;
+  // El acto nuevo empieza en el centro de la sala de inicio, no junto a una puerta.
+  run.entry = null;
+  run.stats.bombsUsedAct = 0;
   const before = p.hp;
-  p.hp = Math.min(p.maxHp, p.hp + 2);
+  p.hp = Math.min(p.maxHp, p.hp + Math.max(0, heal - (run.gira >= 4 ? 2 : 0)));
   run.actHeal = p.hp - before;
 }
 

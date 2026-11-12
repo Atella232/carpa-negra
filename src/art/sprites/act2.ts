@@ -200,7 +200,10 @@ export const ACT2_SPRITES: Record<string, SpriteDef> = {
     },
   },
   pelota_veneno: ascii([['..vv..', '.vVVl.', 'vVlllV', 'vVVlVV', '.vVVv.', '..vv..']]),
-  bala_veneno: ascii([['.vv.', 'vlVv', 'vVVv', '.vv.']]),
+  bala_veneno: ascii([
+    ['.vVv.', 'vVlVv', 'VlWlV', 'vVlVv', '.vVv.'],
+    ['.vvv.', 'vVVVv', 'VVlVV', 'vVVVv', '.vvv.'],
+  ], 'k'),
 
   // Iconos de objetos
   obj_melenaLeon: icon((p) => {

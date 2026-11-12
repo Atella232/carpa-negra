@@ -48,4 +48,9 @@ export class ItemPools {
   toJSON(): string[] {
     return [...this.available];
   }
+
+  /** Deja disponibles solo estos (al cargar una partida guardada). */
+  restore(available: readonly string[]): void {
+    this.available = new Set(available.filter((id) => this.entries.has(id)));
+  }
 }

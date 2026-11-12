@@ -3,10 +3,20 @@ import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { DEPTH } from '../config';
 import { item } from '../data/items';
+import { buildVolley } from '../core/volley';
+import { setBonuses } from '../data/sets';
+import { characterDef } from '../data/characters';
+import { settings } from '../core/save';
 
 type Facing = 'down' | 'up' | 'left' | 'right';
 
 const HEAD_FRAME: Record<Facing, number> = { down: 0, up: 2, left: 4, right: 4 };
+/** Desplazamiento vertical de cada disfraz respecto a la cabeza. */
+const COSTUME_DY: Record<string, number> = {
+  disfraz_llamas: -6, disfraz_malabarista: -12, disfraz_mago: -9, disfraz_payaso: -9, disfraz_fiera: 1,
+};
+/** Disfraces que se ven también de espaldas. */
+const BACK_VISIBLE = new Set(['disfraz_llamas', 'disfraz_barba', 'disfraz_malabarista', 'disfraz_mago', 'disfraz_payaso', 'disfraz_fiera']);
 
 export class Player {
   /** Objeto invisible con físicas; todo lo visible se coloca a partir de él. */
@@ -25,13 +35,23 @@ export class Player {
   fireCooldown = 0;
   shootAnim = 0;
   invuln = 0;
+  /** Tras un golpe, el retroceso manda durante un instante. */
+  knockT = 0;
+  /** Invisible (Bomba de Humo): las criaturas no lo ven. */
+  hiddenT = 0;
   walkTime = 0;
   /** Control bloqueado (transiciones, cañón...). */
   locked = 0;
-  dash: { vx: number; vy: number; t: number } | null = null;
+  dash: { vx: number; vy: number; t: number; harmless?: boolean } | null = null;
   dead = false;
+  private flashT = 0;
   lastShotDir = { x: 0, y: 1 };
+  /** Carga de la Varita Trucada (0..1). */
+  chargeT = 0;
+  private chargeDir = { x: 0, y: 1 };
+  private chargeBall: Phaser.GameObjects.Image | null = null;
   private altShot = false;
+  private volleys = 0;
 
   constructor(private scene: GameScene, x: number, y: number) {
     this.shadow = scene.add.image(x, y + 5, 'sombra').setDepth(DEPTH.shadow);
@@ -66,7 +86,13 @@ export class Player {
     this.stilts?.destroy();
     this.bowtie?.destroy();
     this.stilts = this.bowtie = null;
-    const owned = this.scene.run.player.passives.map((id) => item(id).costume).filter(Boolean) as string[];
+    const passives = this.scene.run.player.passives;
+    const owned = passives.map((id) => item(id).costume).filter(Boolean) as string[];
+    for (const set of setBonuses(passives)) if (set.costume) owned.push(set.costume);
+    // Color del traje según el personaje.
+    const tint = characterDef(this.scene.run.player.character).tint;
+    if (tint) this.bodyVis.setTint(tint);
+    else this.bodyVis.clearTint();
     for (const key of owned) {
       if (key === 'disfraz_zancos') {
         this.stilts = this.scene.add.image(this.x, this.y, key);
@@ -85,13 +111,15 @@ export class Player {
     this.fireCooldown = Math.max(0, this.fireCooldown - dt);
     this.shootAnim = Math.max(0, this.shootAnim - dt);
     this.locked = Math.max(0, this.locked - dt);
+    this.knockT = Math.max(0, this.knockT - dt);
+    this.hiddenT = Math.max(0, this.hiddenT - dt);
 
     const stats = sc.stats;
     if (this.dash) {
       this.dash.t -= dt;
       this.body.setVelocity(this.dash.vx, this.dash.vy);
       this.vel.set(this.dash.vx, this.dash.vy);
-      sc.effects.onDashTick(this);
+      if (!this.dash.harmless) sc.effects.onDashTick(this);
       if (this.dash.t <= 0) {
         this.dash = null;
         this.vel.scale(0.3);
@@ -102,13 +130,16 @@ export class Player {
 
     const move = this.locked > 0 ? { x: 0, y: 0 } : sc.controls.move();
     // Aceleración y fricción: rápido al arrancar, algo de deslizamiento al parar.
-    const target = new Phaser.Math.Vector2(move.x * stats.speed, move.y * stats.speed);
-    const accel = move.x || move.y ? 14 : 10;
+    const slow = sc.playerSlowed() ? 0.55 : 1;
+    const target = new Phaser.Math.Vector2(move.x * stats.speed * slow, move.y * stats.speed * slow);
+    const accel = this.knockT > 0 ? 2 : move.x || move.y ? 14 : 10;
     this.vel.x += (target.x - this.vel.x) * Math.min(1, accel * dt);
     this.vel.y += (target.y - this.vel.y) * Math.min(1, accel * dt);
     if (Math.abs(this.vel.x) < 1) this.vel.x = 0;
     if (Math.abs(this.vel.y) < 1) this.vel.y = 0;
-    this.body.setVelocity(this.vel.x, this.vel.y);
+    // Las cintas del suelo arrastran (salvo con zancos).
+    const push = sc.effects.hasFlag('flight') ? null : sc.floorPush(this.x, this.y + 3);
+    this.body.setVelocity(this.vel.x + (push?.x ?? 0), this.vel.y + (push?.y ?? 0));
     // Si choca con algo, la velocidad real manda (evita "pegarse" a las paredes).
     if (this.body.blocked.left || this.body.blocked.right) this.vel.x *= 0.5;
     if (this.body.blocked.up || this.body.blocked.down) this.vel.y *= 0.5;
@@ -122,23 +153,28 @@ export class Player {
     if (shoot) {
       this.headFacing = shoot.x > 0 ? 'right' : shoot.x < 0 ? 'left' : shoot.y < 0 ? 'up' : 'down';
       this.lastShotDir = shoot;
-      if (this.fireCooldown <= 0) {
-        this.fire(shoot);
-        this.fireCooldown = stats.fireDelay;
+    } else this.headFacing = this.facing;
+    if (stats.shot.charge) {
+      // Varita Trucada: mantener carga el disparo; soltar lo lanza.
+      if (shoot) {
+        this.chargeT = Math.min(1, this.chargeT + dt / Math.max(0.5, stats.fireDelay * 2.5));
+        this.chargeDir = shoot;
+      } else if (this.chargeT > 0 && this.fireCooldown <= 0) {
+        this.fire(this.chargeDir, this.chargeT);
+        this.fireCooldown = stats.fireDelay * 0.5;
+        this.chargeT = 0;
       }
-    } else {
-      this.headFacing = this.facing;
+    } else if (shoot && this.fireCooldown <= 0) {
+      this.fire(shoot);
+      this.fireCooldown = stats.fireDelay;
     }
     this.syncVisuals(dt);
   }
 
-  private fire(dir: { x: number; y: number }): void {
+  private fire(dir: { x: number; y: number }, charge = 0): void {
     const sc = this.scene;
     const st = sc.stats;
     const sh = st.shot;
-    const count = 1 + sh.extraShots;
-    const baseAng = Math.atan2(dir.y, dir.x);
-    const spread = Phaser.Math.DegToRad(sh.spread);
     // Las pelotas salen alternando de cada mano.
     this.altShot = !this.altShot;
     const side = this.altShot ? 3 : -3;
@@ -146,32 +182,22 @@ export class Player {
     const oy = dir.x !== 0 ? side * 0.5 : 0;
     const originX = this.x + ox + dir.x * 4;
     const originY = this.y - 8 + oy + dir.y * 3;
-    const angles: number[] = [];
-    for (let i = 0; i < count; i++) angles.push(baseAng + (i - (count - 1) / 2) * spread);
-    if (sh.backShot) angles.push(baseAng + Math.PI);
-    for (const a of angles) {
+    // Traje de Mago: una de cada cinco ráfagas busca sola.
+    this.volleys++;
+    const magic = sc.effects.hasFlag('palomas') && this.volleys % 5 === 0;
+    for (const v of buildVolley(st, dir, sc.rngCombat.next(), charge)) {
+      if (magic) v.opts.homing = true;
       // El disparo hereda parte de la inercia del payaso.
-      const vx = Math.cos(a) * st.shotSpeed + this.vel.x * 0.35;
-      const vy = Math.sin(a) * st.shotSpeed + this.vel.y * 0.35;
-      sc.spawnShot(originX, originY, vx, vy, true, {
-        damage: st.damage,
-        range: st.range,
-        scale: sh.sizeMult * (st.damage > 6 ? 1.15 : 1),
-        pierce: sh.pierce,
-        bounce: sh.bounce,
-        burn: sh.burn,
-        fragment: sh.fragment,
-        spectral: sh.spectral,
-        homing: sh.homing,
-        poison: sh.poison,
-        grow: sh.grow,
-        texture: sh.knife ? 'cuchillo' : 'pelota',
-        rotate: sh.knife,
-      });
+      const vx = Math.cos(v.angle) * st.shotSpeed + this.vel.x * 0.35;
+      const vy = Math.sin(v.angle) * st.shotSpeed + this.vel.y * 0.35;
+      sc.spawnShot(originX, originY, vx, vy, true, v.opts);
     }
     this.shootAnim = 0.12;
+    // Fogonazo en la mano.
+    sc.fx.sparks(originX + dir.x * 3, originY + dir.y * 3, sh.burn ? 0xf2c14e : 0x7fd1b9, 2 + Math.round(charge * 6));
     sc.familiarsFire(dir);
-    sc.snd('disparo');
+    sc.onPlayerFire(dir);
+    sc.snd(charge > 0.9 ? 'canon' : 'disparo');
   }
 
   syncVisuals(dt: number): void {
@@ -199,11 +225,12 @@ export class Player {
     this.shadow.setDepth(DEPTH.shadow);
 
     for (const c of this.costumes) {
-      c.img.setPosition(hx, hy + (c.key === 'disfraz_llamas' ? -6 : 0));
+      c.img.setPosition(hx, hy + (COSTUME_DY[c.key] ?? 0));
+      if (c.key === 'disfraz_malabarista') c.img.setFrame(Math.floor(this.scene.time.now / 150) % 2);
       c.img.setFlipX(this.headFacing === 'left');
       c.img.setDepth(depth + 0.3);
       // La nariz y el monóculo no se ven de espaldas.
-      c.img.setVisible(this.headFacing !== 'up' || c.key === 'disfraz_llamas' || c.key === 'disfraz_barba');
+      c.img.setVisible(this.headFacing !== 'up' || BACK_VISIBLE.has(c.key));
       if (c.key === 'disfraz_llamas') c.img.setFrame(Math.floor(this.scene.time.now / 120) % 2);
     }
     if (this.stilts) {
@@ -215,21 +242,36 @@ export class Player {
       this.bowtie.setVisible(this.facing !== 'up');
     }
 
-    // Parpadeo durante la invulnerabilidad.
-    const blink = this.invuln > 0 && Math.floor(this.invuln * 14) % 2 === 0;
-    const alpha = blink ? 0.25 : 1;
+    // Bola que crece en la mano mientras se carga.
+    if (this.chargeT > 0) {
+      if (!this.chargeBall) this.chargeBall = this.scene.add.image(0, 0, 'pelota').setDepth(DEPTH.shot);
+      const full = this.chargeT >= 1 && Math.floor(this.scene.time.now / 80) % 2 === 0;
+      this.chargeBall.setPosition(this.x + this.chargeDir.x * 6, this.y - 8 + this.chargeDir.y * 5).setScale(0.5 + this.chargeT).setVisible(true);
+      if (full) this.chargeBall.setTintFill(0xfff2a8);
+      else this.chargeBall.clearTint();
+    } else this.chargeBall?.setVisible(false);
+    if (this.flashT > 0) {
+      this.flashT -= dt;
+      if (this.flashT <= 0) {
+        const tint = characterDef(this.scene.run.player.character).tint;
+        if (tint) this.bodyVis.setTint(tint);
+        else this.bodyVis.clearTint();
+        this.head.clearTint();
+      }
+    }
+    // Parpadeo durante la invulnerabilidad (más lento si se reducen los destellos).
+    const blink = this.invuln > 0 && Math.floor(this.invuln * (settings().flashes ? 14 : 5)) % 2 === 0;
+    const alpha = blink ? 0.25 : this.hiddenT > 0 ? 0.35 : 1;
     this.bodyVis.setAlpha(alpha);
     this.head.setAlpha(alpha);
     for (const c of this.costumes) c.img.setAlpha(alpha);
   }
 
+  /** Tinte breve (por dt: un cambio de sala no lo deja pegado). */
   flash(color: number): void {
     this.bodyVis.setTintFill(color);
     this.head.setTintFill(color);
-    this.scene.time.delayedCall(80, () => {
-      this.bodyVis.clearTint();
-      this.head.clearTint();
-    });
+    this.flashT = 0.08;
   }
 
   setVisible(v: boolean): void {
@@ -242,6 +284,7 @@ export class Player {
   }
 
   destroy(): void {
+    this.chargeBall?.destroy();
     this.sprite.destroy();
     this.bodyVis.destroy();
     this.head.destroy();

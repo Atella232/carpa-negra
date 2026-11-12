@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { FONT_KEY, fontText, textWidth } from '../art/font';
+import { t } from './i18n';
 
 export type Align = 'left' | 'center' | 'right';
 
@@ -12,17 +13,17 @@ export function txt(
   color = 0xefe6d8,
   align: Align = 'left',
 ): Phaser.GameObjects.BitmapText {
-  const t = scene.add.bitmapText(x, y, FONT_KEY, fontText(s));
-  t.setTint(color);
-  t.setOrigin(align === 'left' ? 0 : align === 'center' ? 0.5 : 1, 0);
-  if (align === 'center') t.setCenterAlign();
-  else if (align === 'right') t.setRightAlign();
-  return t;
+  const b = scene.add.bitmapText(x, y, FONT_KEY, fontText(t(s)));
+  b.setTint(color);
+  b.setOrigin(align === 'left' ? 0 : align === 'center' ? 0.5 : 1, 0);
+  if (align === 'center') b.setCenterAlign();
+  else if (align === 'right') b.setRightAlign();
+  return b;
 }
 
-export function setTxt(t: Phaser.GameObjects.BitmapText, s: string): void {
-  const v = fontText(s);
-  if (t.text !== v) t.setText(v);
+export function setTxt(b: Phaser.GameObjects.BitmapText, s: string): void {
+  const v = fontText(t(s));
+  if (b.text !== v) b.setText(v);
 }
 
 /** Texto con sombra de 1 px (para leerse sobre cualquier fondo). */
