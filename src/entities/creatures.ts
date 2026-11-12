@@ -229,7 +229,7 @@ export class Tragafuegos extends Enemy {
       const d = 10 + i * 15;
       this.sc.time.delayedCall(i * 90, () => {
         if (this.dead || !this.active) return;
-        this.sc.spawnFire(this.x + Math.cos(a) * d, this.y + 4 + Math.sin(a) * d, 4);
+        this.sc.spawnFire(this.x + Math.cos(a) * d, this.y + 4 + Math.sin(a) * d, 3);
       });
     }
     this.sc.spawnShot(this.x, this.y - 4, Math.cos(a) * 95, Math.sin(a) * 95, false, {
@@ -309,7 +309,7 @@ export class Globero extends Enemy {
     }
     this.setFrame(0);
     const d = this.distToPlayer();
-    if (d < 60) this.flee();
+    if (d < 60) this.keepAway();
     else if (d > 110) this.chase();
     this.timer -= dt;
     if (this.timer <= 0) {
@@ -448,7 +448,7 @@ export class Malabarista extends Enemy {
     switch (this.state) {
       case 'girar': {
         const d = this.distToPlayer();
-        if (d < 50) this.flee();
+        if (d < 50) this.keepAway();
         else if (d > 90) this.chase();
         this.timer -= dt;
         if (this.timer <= 0) {
@@ -469,7 +469,7 @@ export class Malabarista extends Enemy {
         }
         break;
       case 'huir':
-        this.flee();
+        this.keepAway();
         if (this.stateT <= 0) {
           this.held = 3;
           this.timer = 2;

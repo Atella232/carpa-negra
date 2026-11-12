@@ -344,6 +344,28 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.desired.set(Math.cos(a) * this.speed * 0.8, Math.sin(a) * this.speed * 0.8);
   }
 
+  /**
+   * Se aparta del payaso hacia el centro despejado de la sala, sin pegarse a
+   * las paredes ni meterse en las esquinas (si ya está contra un borde, se
+   * escurre de lado). Para las criaturas que guardan la distancia.
+   */
+  protected keepAway(): void {
+    const p = this.player;
+    const a = Math.atan2(this.y - p.y, this.x - p.x);
+    const clampX = (x: number) => Phaser.Math.Clamp(x, 44, 196),
+      clampY = (y: number) => Phaser.Math.Clamp(y, 40, 104);
+    let tx = clampX(this.x + Math.cos(a) * 40),
+      ty = clampY(this.y + Math.sin(a) * 40);
+    if (Math.hypot(tx - this.x, ty - this.y) < 10) {
+      // Contra el borde: hacia el lado que más lo aleje del payaso.
+      const opts = [a + Math.PI / 2, a - Math.PI / 2].map((s) => ({ x: clampX(this.x + Math.cos(s) * 40), y: clampY(this.y + Math.sin(s) * 40) }));
+      const best = opts.sort((u, v) => Math.hypot(v.x - p.x, v.y - p.y) - Math.hypot(u.x - p.x, u.y - p.y))[0];
+      tx = best.x;
+      ty = best.y;
+    }
+    this.toward(tx, ty, this.speed * 0.8);
+  }
+
   protected distToPlayer(): number {
     return Phaser.Math.Distance.Between(this.x, this.y, this.player.x, this.player.y);
   }

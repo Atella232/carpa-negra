@@ -9,14 +9,20 @@ estas notas):
 - **Fase 0**: el test destapó una sala más que la tabla (`cabezas_rodantes`,
   con 4 criaturas pesadas): se cambió un cabezudo por una bailarina. En
   `reflejo_total` se quitó un tragasables (no un reflejo), por la misma regla.
-  `braseros` y `tragafuegos_nichos` recibieron un mimo: los comodines aún no
-  existían.
-- **Fase 1**: el disparo que moja un fuego **sigue su camino** (cada pelota moja
+  `braseros` y `tragafuegos_nichos` pasaron a dificultad 2 tal como estaban
+  (primero se les añadió un mimo, pero en las partidas completas del bot
+  `tragafuegos_nichos` era donde más se moría en el Acto I).
+- **Fase 1**: el fuego del Tragafuegos sigue durando 3 s (no 4). El disparo que
+  moja un fuego **sigue su camino** (cada pelota moja
   cada fuego una sola vez). Pararlo, como decía el plan, convertía el fuego en un
   escudo: en `tragafuegos_nichos` el bot perdía 24 medios globos por sala; ahora, 2.
 - **Fase 2**: si no caben todas las salas extra sorteadas, el generador vuelve a
   intentarlo (y a partir de 300 intentos pide menos), en lugar de colocar solo
   las que quepan.
+- **Fases 3 y 5**: las criaturas que guardan la distancia (vendedor de globos,
+  malabarista, hipnotizador) se apartan hacia el centro despejado
+  (`Enemy.keepAway`), no contra las paredes: pegadas al borde eran muy difíciles
+  de alinear y alargaban las salas.
 - **Fase 3**: el malabarista lanza sus mazas cada 2 s (no 2,5): el bot tardaba
   demasiado en limpiar sus salas.
 - **Fase 4**: el mono ladrón, con el saco, huye más despacio hacia sitios

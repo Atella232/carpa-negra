@@ -98,12 +98,12 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
     ],
   },
   {
-    id: 'braseros', diff: 3,
+    id: 'braseros', diff: 2,
     rows: [
       '.............',
       '.F.........F.',
       '.............',
-      '...f..m..f...',
+      '...f.....f...',
       '.............',
       '.F.........F.',
       '.............',
@@ -206,12 +206,12 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
     ],
   },
   {
-    id: 'tragafuegos_nichos', diff: 3,
+    id: 'tragafuegos_nichos', diff: 2,
     rows: [
       '.............',
       '.............',
       '..CC.....CC..',
-      '..Cf..m..fC..',
+      '..Cf.....fC..',
       '..CC.....CC..',
       '.............',
       '.............',

@@ -500,7 +500,7 @@ export class Hipnotizador extends Enemy {
     }
     this.setFrame(0);
     const d = this.distToPlayer();
-    if (d < 70) this.flee();
+    if (d < 70) this.keepAway();
     else if (d > 100) this.chase();
     this.timer -= dt;
     if (this.timer <= 0) {
