@@ -1,10 +1,13 @@
-// Las ocho criaturas del Acto I.
+// Las criaturas del Acto I.
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { Enemy } from './Enemy';
 import type { EnemyOpts } from './Enemy';
 
 import { anim } from './Enemy';
+import type { Shot } from './Shot';
+import { lob } from './Lob';
+import { DEPTH } from '../config';
 
 /** Mimo roto: persigue sin descanso, rodeando obstáculos. */
 export class Mimo extends Enemy {
@@ -277,6 +280,281 @@ export class Pulga extends Enemy {
         this.timer = Phaser.Math.FloatBetween(0.7, 1.2) / (this.champion === 'amarillo' ? 1.5 : 1);
         this.sc.splash(this.x, this.y + 4, 'salpicadura', 0.7);
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Nuevas del Acto I
+// ---------------------------------------------------------------------------
+
+/**
+ * Vendedor de globos: guarda la distancia y suelta globos que flotan hacia ti
+ * (como mucho tres a la vez). Si lo matas, sus globos se escapan sin estallar.
+ */
+export class Globero extends Enemy {
+  timer = 1.5;
+  windup = 0;
+  t = Math.random();
+  balloons: GloboSuelto[] = [];
+  protected think(dt: number): void {
+    this.t += dt;
+    this.balloons = this.balloons.filter((b) => b.active && !b.dead);
+    this.setFlipX(this.player.x < this.x);
+    if (this.windup > 0) {
+      this.windup -= dt;
+      this.setFrame(1);
+      if (this.windup <= 0) this.release();
+      return;
+    }
+    this.setFrame(0);
+    const d = this.distToPlayer();
+    if (d < 60) this.flee();
+    else if (d > 110) this.chase();
+    this.timer -= dt;
+    if (this.timer <= 0) {
+      this.timer = 3.2;
+      if (this.balloons.length < (this.champion ? 4 : 3)) {
+        this.windup = 0.4;
+        this.windupFlash();
+      }
+    }
+  }
+  private release(): void {
+    const b = this.sc.spawn('globoSuelto', this.x + (this.flipX ? -5 : 5), this.y - 10) as GloboSuelto;
+    b.wake = 0.3;
+    this.balloons.push(b);
+    this.sc.snd('globo');
+  }
+  die(): void {
+    for (const b of this.balloons) if (b.active && !b.dead) b.escape();
+    super.die();
+  }
+}
+
+/**
+ * Globo suelto: flota hacia ti con vaivén. Revienta al tocarte, al darle o a
+ * los 12 s: aviso de 0,25 s y cuatro balas en cruz de poco alcance. No cuenta
+ * para limpiar la sala ni da premios (si no, el vendedor sería una mina de oro).
+ */
+export class GloboSuelto extends Enemy {
+  t = Math.random() * 10;
+  life = 12;
+  escaping = false;
+  constructor(scene: GameScene, x: number, y: number, texture: string, o: EnemyOpts) {
+    super(scene, x, y, texture, { ...o, noSmoke: true });
+    this.countsForClear = false;
+    this.contact = 0;
+  }
+  protected tick(dt: number): void {
+    if (this.escaping) {
+      this.y -= 40 * dt;
+      this.setAlpha(Math.max(0, this.alpha - dt));
+      if (this.alpha <= 0) this.vanish();
+      return;
+    }
+    this.life -= dt;
+    if (this.life <= 0 || (this.wake <= 0 && this.distToPlayer() < 12)) this.die();
+  }
+  protected think(dt: number): void {
+    if (this.escaping) return;
+    this.t += dt;
+    const p = this.player;
+    const a = Math.atan2(p.y - 6 - this.y, p.x - this.x) + Math.sin(this.t * 2.5) * 0.6;
+    this.desired.set(Math.cos(a) * this.speed, Math.sin(a) * this.speed);
+    this.lift = 6 + Math.sin(this.t * 3) * 2;
+    this.setFrame(this.life < 2 && Math.floor(this.t * 8) % 2 ? 1 : 0);
+  }
+  /** Se va volando sin estallar (al morir su vendedor). */
+  escape(): void {
+    this.escaping = true;
+    this.invulnerable = true;
+    this.body.enable = false;
+  }
+  private vanish(): void {
+    this.dead = true;
+    this.destroy();
+  }
+  die(): void {
+    if (this.dead) return;
+    this.dead = true;
+    const sc = this.sc;
+    const x = this.x,
+      y = this.y - this.lift;
+    sc.snd('pinchazo');
+    sc.fx.debris(x, y, 0x7a4a8c, 5);
+    sc.telegraph.circle(x, y + this.lift, 14, 0.25, { color: 0xc9b3ef });
+    sc.time.delayedCall(250, () => {
+      if (!sc.scene.isActive()) return;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2;
+        sc.spawnShot(x, y, Math.cos(a) * 70, Math.sin(a) * 70, false, { damage: 1, range: 60 });
+      }
+    });
+    this.destroy();
+  }
+}
+
+/**
+ * Malabarista: tres mazas le giran alrededor y paran tus disparos. Cada poco
+ * las lanza en parábola, una tras otra, hacia donde estás; sin mazas huye un
+ * momento (es cuando se le puede dar bien) y luego las recupera.
+ */
+export class Malabarista extends Enemy {
+  clubs: Phaser.GameObjects.Image[] = [];
+  held = 3;
+  ang = Math.random() * Math.PI * 2;
+  timer = 2;
+  state: 'girar' | 'lanzar' | 'huir' = 'girar';
+  stateT = 0;
+  t = Math.random();
+  private ensureClubs(): void {
+    while (this.clubs.length < 3) {
+      const c = this.sc.add.image(this.x, this.y, 'maza');
+      this.clubs.push(c);
+    }
+  }
+  protected tick(dt: number): void {
+    this.ensureClubs();
+    this.ang += dt * 2.2;
+    this.clubs.forEach((c, i) => {
+      const on = i < this.held;
+      c.setVisible(on && this.visible);
+      if (!on) return;
+      const a = this.ang + (i / 3) * Math.PI * 2;
+      c.setPosition(this.x + Math.cos(a) * 14, this.y - 2 + Math.sin(a) * 14);
+      c.setRotation(a * 2);
+      c.setDepth(DEPTH.world + c.y + 8);
+    });
+    // Las mazas que gira paran tus pelotas (salvo las que atraviesan obstáculos).
+    if (!this.held) return;
+    for (const s of this.sc.g.pShots.getChildren() as Shot[]) {
+      if (s.dead || !s.active || s.opts.spectral) continue;
+      for (let i = 0; i < this.held; i++) {
+        const c = this.clubs[i];
+        if (Math.abs(s.x - c.x) < 6 && Math.abs(s.y - c.y) < 6) {
+          s.pop('obstaculo');
+          this.sc.fx.sparks(c.x, c.y, 0xffffff, 2);
+          break;
+        }
+      }
+    }
+  }
+  protected think(dt: number): void {
+    this.t += dt;
+    this.setFlipX(this.player.x < this.x);
+    this.setFrame(anim(this.t, 4, 2));
+    this.stateT -= dt;
+    switch (this.state) {
+      case 'girar': {
+        const d = this.distToPlayer();
+        if (d < 50) this.flee();
+        else if (d > 90) this.chase();
+        this.timer -= dt;
+        if (this.timer <= 0) {
+          this.state = 'lanzar';
+          this.stateT = 0;
+          this.windupFlash();
+        }
+        break;
+      }
+      case 'lanzar':
+        if (this.stateT > 0) break;
+        if (this.held > 0) {
+          this.throwClub();
+          this.stateT = 0.35;
+        } else {
+          this.state = 'huir';
+          this.stateT = 2;
+        }
+        break;
+      case 'huir':
+        this.flee();
+        if (this.stateT <= 0) {
+          this.held = 3;
+          this.timer = 2;
+          this.state = 'girar';
+          this.sc.snd('salto');
+        }
+        break;
+    }
+  }
+  private throwClub(): void {
+    this.held--;
+    const sc = this.sc;
+    const tx = Phaser.Math.Clamp(this.player.x, 24, 216);
+    const ty = Phaser.Math.Clamp(this.player.y + 2, 24, 124);
+    lob(sc, this.x, this.y - 6, tx, ty, { texture: 'maza', dur: 0.7, height: 36, radius: 9, spin: true });
+    sc.snd('salto');
+  }
+  destroy(fromScene?: boolean): void {
+    for (const c of this.clubs) c.destroy();
+    this.clubs = [];
+    super.destroy(fromScene);
+  }
+}
+
+/**
+ * Perrito amaestrado: va en jauría. Te rodea, ladra (aviso: se para y marca la
+ * línea) y te muerde en línea recta hacia donde estabas; luego se aparta.
+ */
+export class Perrito extends Enemy {
+  state: 'rodear' | 'aviso' | 'mordisco' | 'retirada' = 'rodear';
+  timer = Phaser.Math.FloatBetween(1.6, 2.6);
+  sense = Math.random() < 0.5 ? 1 : -1;
+  dir = new Phaser.Math.Vector2();
+  t = Math.random();
+  protected think(dt: number): void {
+    this.t += dt;
+    this.timer -= dt;
+    const p = this.player;
+    const b = this.body.blocked;
+    const hit = b.left || b.right || b.up || b.down;
+    switch (this.state) {
+      case 'rodear': {
+        const a = Math.atan2(this.y - p.y, this.x - p.x) + this.sense * 0.6;
+        const tx = p.x + Math.cos(a) * 46,
+          ty = p.y + Math.sin(a) * 46;
+        if (this.sc.nav.lineFree(this.x, this.y, tx, ty)) this.toward(tx, ty);
+        else this.chase();
+        if (hit) this.sense *= -1;
+        this.setFrame(anim(this.t, 10, 2));
+        this.setFlipX(this.desired.x < 0);
+        if (this.timer <= 0 && this.distToPlayer() < 90 && this.sc.nav.lineFree(this.x, this.y, p.x, p.y)) {
+          this.state = 'aviso';
+          this.timer = 0.35;
+          const a2 = Math.atan2(p.y - this.y, p.x - this.x);
+          this.dir.set(Math.cos(a2), Math.sin(a2));
+          this.setFlipX(this.dir.x < 0);
+          this.windupFlash();
+          this.sc.snd('ladrido');
+          this.sc.telegraph.line(this.x, this.y, this.x + this.dir.x * 76, this.y + this.dir.y * 76, 0.35, { owner: this, w: 8 });
+        }
+        break;
+      }
+      case 'aviso':
+        this.setFrame(2);
+        if (this.timer <= 0) {
+          this.state = 'mordisco';
+          this.timer = 0.45;
+        }
+        break;
+      case 'mordisco':
+        this.setFrame(1);
+        this.desired.set(this.dir.x * 170, this.dir.y * 170);
+        if (this.timer <= 0 || hit) {
+          this.state = 'retirada';
+          this.timer = 0.6;
+        }
+        break;
+      case 'retirada':
+        this.flee();
+        this.setFrame(anim(this.t, 10, 2));
+        if (this.timer <= 0) {
+          this.state = 'rodear';
+          this.timer = Phaser.Math.FloatBetween(1.6, 2.6);
+        }
+        break;
     }
   }
 }

@@ -68,6 +68,7 @@ export const EN_GAME: Record<string, string> = {
   'Aplauso Eterno': 'Eternal Applause', 'El público te perdona la mitad': 'The crowd forgives you halfway',
   'Calcetín Apestoso': 'Smelly Sock', 'No hace nada. Huele fatal': 'Does nothing. Smells awful',
   // --- Criaturas ---
+  'Vendedor de globos': 'Balloon Seller', 'Globo suelto': 'Loose Balloon', 'Malabarista': 'Juggler', 'Perrito amaestrado': 'Trained Pup',
   'Mimo roto': 'Broken Mime', 'Polilla del foco': 'Spotlight Moth', 'Mono platillero': 'Cymbal Monkey',
   'Lanzacuchillos': 'Knife Thrower', 'Caja sorpresa': 'Jack-in-the-Box', 'Monociclista': 'Unicyclist',
   'Tragafuegos': 'Fire Eater', 'Pulga amaestrada': 'Trained Flea', 'León sarnoso': 'Mangy Lion',

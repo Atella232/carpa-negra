@@ -3,7 +3,7 @@
 import type { GameScene } from '../scenes/GameScene';
 import type { Enemy, EnemyOpts } from './Enemy';
 import { Champion, ENEMIES, EnemyKind } from '../data/enemies';
-import { Mimo, Polilla, Mono, Lanzacuchillos, Caja, Monociclista, Tragafuegos, Pulga } from './creatures';
+import { Mimo, Polilla, Mono, Lanzacuchillos, Caja, Monociclista, Tragafuegos, Pulga, Globero, GloboSuelto, Malabarista, Perrito } from './creatures';
 import { Leon, Cobra, Oso, Loro, Domador, Payasito } from './creatures2';
 import { Reflejo, Bailarina, Ilusionista, Senuelo, Munieco, Ventrilocuo, Tragasables, Cabezudo, Cabecita, Orbe } from './creatures3';
 import { Trapecista, HombreBala, Zancudo, Augusto, Acomodador, Barbuda } from './creatures4';
@@ -45,6 +45,10 @@ const CREATURE_CTORS: Record<EnemyKind, CreatureCtor> = {
   acomodador: Acomodador,
   barbuda: Barbuda,
   guante: Guante,
+  globero: Globero,
+  globoSuelto: GloboSuelto,
+  malabarista: Malabarista,
+  perrito: Perrito,
 };
 
 export function spawnCreature(scene: GameScene, kind: EnemyKind, x: number, y: number, champion: Champion | null = null): Enemy {

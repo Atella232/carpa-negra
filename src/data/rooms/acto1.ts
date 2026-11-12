@@ -5,6 +5,7 @@
 //   M  bloque de metal  T  tachuelas     O  foso     F  brasero
 //   m mimo  v polilla  o mono  k lanzacuchillos  j caja sorpresa
 //   u monociclista  f tragafuegos  g pulga
+//   G vendedor de globos   L malabarista   D perrito amaestrado
 // Comodines (la criatura se sortea para cada sala entre las de su lista, en acts.ts):
 //   5 débil   6 cuerpo a cuerpo   7 a distancia
 import type { RoomTemplate } from './template';
@@ -297,6 +298,127 @@ export const ACTO1_ROOMS: RoomTemplate[] = [
       '......f......',
       '..g.......u..',
       '....F...F....',
+      '.............',
+    ],
+  },
+  // --- Nuevas (variedad) ---
+  {
+    id: 'jauria', diff: 1,
+    rows: [
+      '.............',
+      '.............',
+      '...D.....D...',
+      '..P...D...P..',
+      '.............',
+      '.............',
+      '.............',
+    ],
+  },
+  {
+    id: 'primer_globero', diff: 1,
+    rows: [
+      '.............',
+      '.OO.......OO.',
+      '.O.......G.O.',
+      '......5......',
+      '...5.........',
+      '.............',
+      '.............',
+    ],
+  },
+  {
+    id: 'malabaristas', diff: 2,
+    rows: [
+      '.............',
+      '...L.....L...',
+      '.............',
+      '...CC.5.CC...',
+      '.............',
+      '.............',
+      '.............',
+    ],
+  },
+  {
+    id: 'globos_y_tachuelas', diff: 2,
+    rows: [
+      '.............',
+      '.........G...',
+      '...D.........',
+      '..TTT...TTT..',
+      '.........D...',
+      '.............',
+      '.............',
+    ],
+  },
+  {
+    id: 'comodin_cruz', diff: 2,
+    rows: [
+      '.............',
+      '...6.....7...',
+      '.....M.M.....',
+      '......M......',
+      '.....M.M.....',
+      '.........6...',
+      '.............',
+    ],
+  },
+  {
+    id: 'perrera', diff: 2,
+    rows: [
+      '.............',
+      '.C.D.C.C.D.C.',
+      '.............',
+      '...C..k..C...',
+      '.............',
+      '.C.D.C.C.D.C.',
+      '.............',
+    ],
+  },
+  {
+    id: 'feria_de_globos', diff: 3,
+    rows: [
+      '.............',
+      '...G.........',
+      '....OO.OO....',
+      '....O.5.O....',
+      '....OO.OO....',
+      '...5.....G...',
+      '.............',
+    ],
+  },
+  {
+    id: 'numero_de_mazas', diff: 3,
+    rows: [
+      '.............',
+      '...L.....L...',
+      '.............',
+      '......7......',
+      '....C...C....',
+      '...D.....D...',
+      '.............',
+    ],
+  },
+  {
+    id: 'comodin_plaza', diff: 3,
+    rows: [
+      '.............',
+      '.F.6.....6.F.',
+      '.............',
+      '...5..7..5...',
+      '.............',
+      '.F.........F.',
+      '.............',
+    ],
+  },
+  {
+    id: 'todo_el_elenco', diff: 3,
+    rows: [
+      '.............',
+      '...G..P..L...',
+      '.............',
+      '....C.o.C....',
+      '.............',
+      '...D.....D...',
       '.............',
     ],
   },

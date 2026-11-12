@@ -113,7 +113,9 @@ export type SfxName =
   // Acto III
   | 'cristal' | 'espejo' | 'humo' | 'carta' | 'cajaMusica' | 'carcajada' | 'cinta' | 'sable' | 'guadana'
   // Acto IV
-  | 'tomate' | 'ovacion' | 'redoble' | 'mecha' | 'canonPista' | 'trapecio' | 'batuta' | 'chistera';
+  | 'tomate' | 'ovacion' | 'redoble' | 'mecha' | 'canonPista' | 'trapecio' | 'batuta' | 'chistera'
+  // Variedad
+  | 'ladrido' | 'pinchazo' | 'bocinazo' | 'bombo' | 'platillos' | 'trompeta';
 
 /** Reproduce un efecto (con un pequeño límite para que no se amontonen). */
 export function sfx(name: SfxName): void {
@@ -277,6 +279,28 @@ export function sfx(name: SfxName): void {
       break;
     case 'aviso':
       tone(r(880, 940), 0.05, { type: 'square', vol: 0.05 });
+      break;
+    case 'ladrido':
+      tone(r(520, 600), 0.06, { type: 'square', to: 300, vol: 0.12 });
+      tone(r(480, 540), 0.07, { type: 'square', to: 260, vol: 0.1, delay: 0.09 });
+      break;
+    case 'pinchazo':
+      noise(0.12, { vol: 0.3, freq: 3000, to: 800 });
+      tone(900, 0.05, { type: 'triangle', to: 200, vol: 0.1 });
+      break;
+    case 'bocinazo':
+      tone(220, 0.18, { type: 'sawtooth', vol: 0.12 });
+      tone(277, 0.18, { type: 'sawtooth', vol: 0.1, delay: 0.2 });
+      break;
+    case 'bombo':
+      tone(90, 0.25, { type: 'sine', to: 45, vol: 0.4 });
+      noise(0.08, { vol: 0.15, freq: 400, to: 120 });
+      break;
+    case 'platillos':
+      noise(0.5, { vol: 0.25, freq: 7000, to: 3000 });
+      break;
+    case 'trompeta':
+      [523, 659, 784].forEach((f, i) => tone(f, 0.09, { type: 'square', vol: 0.08, delay: i * 0.15 }));
       break;
     case 'telon':
       noise(0.9, { vol: 0.18, freq: 700, to: 300 });

@@ -34,7 +34,12 @@ export type EnemyKind =
   | 'augusto'
   | 'acomodador'
   | 'barbuda'
-  | 'guante';
+  | 'guante'
+  // Nuevas del Acto I
+  | 'globero'
+  | 'globoSuelto'
+  | 'malabarista'
+  | 'perrito';
 
 export type BossKind = 'forzudo' | 'siameses' | 'bestia' | 'serpiente' | 'reflejo' | 'fortuna' | 'maestro';
 
@@ -97,6 +102,11 @@ export const ENEMIES: Record<EnemyKind, EnemyDef> = {
   acomodador: { kind: 'acomodador', name: 'Acomodador', hp: 14, speed: 40, texture: 'acomodador', body: { w: 9, h: 12, dy: 4 } },
   barbuda: { kind: 'barbuda', name: 'Mujer Barbuda', hp: 60, speed: 26, texture: 'barbuda', body: { w: 14, h: 14, dy: 5 } },
   guante: { kind: 'guante', name: 'Guante', hp: 9999, speed: 0, flying: true, texture: 'guante', body: { w: 14, h: 12, dy: 0 } },
+  // --- Nuevas del Acto I ---
+  globero: { kind: 'globero', name: 'Vendedor de globos', hp: 18, speed: 24, texture: 'globero', body: { w: 10, h: 12, dy: 6 } },
+  globoSuelto: { kind: 'globoSuelto', name: 'Globo suelto', hp: 1, speed: 30, flying: true, texture: 'globoSuelto', body: { w: 9, h: 10, dy: 0 } },
+  malabarista: { kind: 'malabarista', name: 'Malabarista', hp: 16, speed: 30, texture: 'malabarista', body: { w: 10, h: 12, dy: 4 } },
+  perrito: { kind: 'perrito', name: 'Perrito amaestrado', hp: 6, speed: 78, texture: 'perrito', body: { w: 10, h: 7, dy: 2 } },
 };
 
 /** Letras de las plantillas de sala → criatura. */
@@ -130,6 +140,10 @@ export const TEMPLATE_ENEMY: Record<string, EnemyKind> = {
   x: 'augusto',
   y: 'acomodador',
   B: 'barbuda',
+  // Nuevas del Acto I
+  G: 'globero',
+  L: 'malabarista',
+  D: 'perrito',
 };
 
 /**
@@ -146,6 +160,8 @@ export const THREAT: Record<EnemyKind, number> = {
   oso: 4, domador: 4, ilusionista: 4, ventrilocuo: 4, tragasables: 4, cabezudo: 4, hombreBala: 4, zancudo: 4,
   barbuda: 7,
   senuelo: 0, orbe: 0, copia: 0, guante: 0,
+  // Nuevas del Acto I
+  globero: 4, globoSuelto: 1, malabarista: 3, perrito: 1.5,
 };
 
 /** Color de los restos al morir. */
@@ -156,6 +172,7 @@ export const GIB_COLOR: Partial<Record<string, number>> = {
   reflejo: 0xe4e2ec, bailarina: 0xf2a3b5, ilusionista: 0x4a2f5c, munieco: 0xd6a66b, ventrilocuo: 0x2b4f7a,
   tragasables: 0xa3a0ad, cabezudo: 0xf2a3b5, cabecita: 0xf2a3b5, orbe: 0xc9b3ef, tu_reflejo: 0x7fd1b9,
   trapecista: 0xd9627f, hombre_bala: 0xd4323f, zancudo: 0x2b4f7a, augusto: 0xe8743b, acomodador: 0xf2c14e, barbuda: 0x6b3e26,
+  globero: 0x2b4f7a, globoSuelto: 0x7a4a8c, malabarista: 0xe8743b, perrito: 0xc2bccb,
 };
 
 export type Champion = 'rojo' | 'amarillo' | 'azul' | 'dorado';

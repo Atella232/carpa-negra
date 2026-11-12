@@ -229,6 +229,84 @@ export const ENEMY_SPRITES: Record<string, SpriteDef> = {
     frames: 2,
     paint: (p, f) => siames(p, f, 'B', 'b'),
   },
+  // --- Nuevas del Acto I ---
+  // Vendedor de globos: gorra a rayas, delantal y un ramo de globos (1 = soltando uno).
+  globero: {
+    w: 18,
+    h: 24,
+    frames: 2,
+    paint: (p, f) => {
+      // Ramo de globos sobre la cabeza.
+      const lift = f === 1 ? 1 : 0;
+      p.line(13, 9, 11, 4 - lift, 'w').line(13, 9, 15, 3 - lift, 'w').line(13, 9, 16, 6 - lift, 'w');
+      p.ellipse(11, 3 - lift, 2.5, 3, 'P').px(10, 2 - lift, 'h');
+      p.ellipse(15, 2 - lift, 2.5, 3, 'R').px(14, 1 - lift, 'm');
+      if (f === 0) p.ellipse(16.5, 6, 1.5, 2.5, 'V');
+      // Cabeza y gorra.
+      p.disc(6.5, 11, 3.5, 'w');
+      p.stripesV(3, 6, 7, 3, 'R', 'W', 1).rect(2, 8, 9, 1, 'R');
+      p.px(5, 11, 'k').px(8, 11, 'k').rect(5, 13, 4, 1, 'r');
+      // Cuerpo con delantal.
+      p.rect(3, 15, 8, 6, 'b').rect(5, 15, 4, 6, 'w');
+      p.rect(11, 14, 2, 4, 'b').px(12, 9, 'w').rect(12, 10, 1, 5, 'w');
+      p.rect(1, 15, 2, 4, 'b');
+      p.rect(4, 21, 2, 3, 'k').rect(8, 21, 2, 3, 'k');
+    },
+  },
+  // Globo suelto: un globo con sonrisa torcida (1 = a punto de reventar).
+  globoSuelto: {
+    w: 12,
+    h: 16,
+    frames: 2,
+    paint: (p, f) => {
+      const c = f === 1 ? 'm' : 'P';
+      p.ellipse(5.5, 5.5, 5, 5.5, c).ellipse(4, 3.5, 1.5, 2, 'h');
+      p.px(3, 5, 'k').px(7, 5, 'k');
+      p.line(3, 8, 5, 9, 'k').line(5, 9, 8, 7, 'k');
+      p.px(5, 11, c).px(6, 11, c).line(6, 12, 5, 15, 'w');
+    },
+  },
+  // Malabarista: traje de rombos (las mazas se dibujan aparte).
+  malabarista: {
+    w: 16,
+    h: 18,
+    frames: 2,
+    paint: (p, f) => {
+      p.disc(7.5, 5, 3.5, 'w');
+      p.rect(4, 0, 8, 2, 'y').px(4, 2, 'y').px(11, 2, 'y');
+      p.px(6, 5, 'k').px(9, 5, 'k').rect(6, 7, 4, 1, 'R');
+      for (let y = 9; y < 15; y++) for (let x = 4; x < 12; x++) p.px(x, y, (x + y) % 4 < 2 ? 'o' : 'p');
+      if (f === 0) p.rect(1, 9, 3, 2, 'w').rect(12, 9, 3, 2, 'w');
+      else p.rect(1, 6, 3, 2, 'w').rect(12, 6, 3, 2, 'w');
+      p.rect(5, 15, 2, 3, 'k').rect(9, 15, 2, 3, 'k');
+    },
+  },
+  maza: {
+    w: 6,
+    h: 10,
+    paint: (p) => {
+      p.ellipse(2.5, 3.5, 2.5, 3.5, 'W').rect(2, 6, 2, 3, 'R').px(2, 9, 'y').px(3, 9, 'y');
+      p.px(1, 2, 'R').px(3, 3, 'R');
+    },
+  },
+  // Perrito amaestrado: 0-1 corriendo, 2 ladrando (aviso del mordisco).
+  perrito: {
+    w: 16,
+    h: 12,
+    frames: 3,
+    paint: (p, f) => {
+      p.ellipse(7, 7, 5, 3, 'G').rect(3, 6, 2, 2, 'w');
+      p.disc(12.5, 4.5, 2.5, 'G').px(13, 4, 'k').rect(14, 5, 2, 1, 'k');
+      p.px(11, 1, 'g').px(11, 2, 'g').px(10, 2, 'g');
+      p.rect(9, 7, 2, 1, 'R').px(10, 8, 'y'); // collar
+      p.line(2, 6, 0, 4, 'G');
+      // Gorrito de circo.
+      p.px(13, 1, 'R').px(13, 0, 'y').px(12, 2, 'R').px(14, 2, 'R');
+      const leg = f === 1 ? 1 : 0;
+      p.rect(4 + leg, 10, 1, 2, 'g').rect(9 - leg, 10, 1, 2, 'g');
+      if (f === 2) p.rect(14, 6, 2, 2, 'm').px(15, 3, 'W');
+    },
+  },
 };
 
 function siames(p: Pix, f: number, a: string, b: string): void {

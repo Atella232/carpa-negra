@@ -101,8 +101,8 @@ export const ACTS: ActDef[] = [
     minNormal: 9, maxNormal: 11, hpMult: 1, champion: 0.07, music: 'carpa', bossMusic: 'jefe',
     floor: {}, specials: EXTRAS_I_II, exit: 'trampilla', contract: true,
     slots: {
-      '5': ['mimo', 'pulga', 'polilla'],
-      '6': ['mono', 'monociclista'],
+      '5': ['mimo', 'pulga', 'polilla', 'perrito'],
+      '6': ['mono', 'monociclista', 'malabarista'],
       '7': ['lanzacuchillos', 'caja', 'tragafuegos'],
     },
   },
@@ -113,7 +113,7 @@ export const ACTS: ActDef[] = [
     floor: { normal: 'jaulas', inicio: 'jaulas', jefe: 'guarida' }, specials: EXTRAS_I_II,
     exit: 'trampilla', contract: true,
     slots: {
-      '5': ['loro', 'payasito', 'mimo'],
+      '5': ['loro', 'payasito', 'mimo', 'perrito'],
       '6': ['leon', 'mono', 'monociclista'],
       '7': ['cobra', 'lanzacuchillos'],
     },
@@ -125,7 +125,7 @@ export const ACTS: ActDef[] = [
     floor: { normal: 'espejos', inicio: 'espejos', jefe: 'mil_espejos' },
     specials: EXTRAS_III_IV, exit: 'trampilla', contract: true,
     slots: {
-      '5': ['munieco', 'mimo', 'loro'],
+      '5': ['munieco', 'mimo', 'loro', 'perrito'],
       '6': ['bailarina', 'reflejo', 'leon'],
       '7': ['lanzacuchillos', 'cobra'],
     },
@@ -137,7 +137,7 @@ export const ACTS: ActDef[] = [
     floor: { normal: 'pista', inicio: 'pista', jefe: 'pista_central' },
     specials: EXTRAS_III_IV, exit: 'final', contract: false, mods: { publico: 'dos_caras' },
     slots: {
-      '5': ['mimo', 'munieco', 'loro'],
+      '5': ['mimo', 'munieco', 'loro', 'perrito'],
       '6': ['bailarina', 'leon', 'reflejo', 'mono'],
       '7': ['augusto', 'lanzacuchillos'],
     },
